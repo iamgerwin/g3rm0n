@@ -26,19 +26,42 @@ ui_label() { ui_pad "$1" 7; }   # left column of every panel row
 #   "◉ CPU ────────────────"                       plain (one-shot output)
 #   "▾ ◉ CPU ──────────── 1"                        live: fold marker and shortcut key
 #   "▸ ◉ CPU · 24% · load 1.12 ──────────── 1"      folded: summary in the title
-# A summary that doesn't fit is left out rather than cut, so colors never break.
+# A summary that doesn't fit drops its last " · " parts; it is never cut mid-part.
 ui_title() {
-  local head="${3:+$3 }$c_bold$1 $2$c_off" tail="${5:+ $c_dim${5:-}$c_off}" sum="" t used fill
-  # braces matter: macOS reads the first byte of a UTF-8 character after $name as part of the name
-  [[ -n ${4:-} ]] && sum=" ${c_dim}·${c_off} $4"
+  local head="${3:+$3 }$c_bold$1 $2$c_off" tail="${5:+ $c_dim${5:-}$c_off}" sum=${4:-} t used fill
   # visible widths, measured in-process (no subshells: this runs for every panel, every frame)
   t=${head//$'\e'\[*([0-9;])m/}; used=${#t}
   t=${tail//$'\e'\[*([0-9;])m/}; used=$(( used + ${#t} + 1 ))
-  t=${sum//$'\e'\[*([0-9;])m/}
-  (( used + ${#t} + 2 <= G3_W )) && { head+=$sum; used=$(( used + ${#t} )); }
+  # a summary that doesn't fit loses its last " · " parts, most important part first;
+  # it is never cut mid-part, so colors stay intact ("612 tasks · WindowServer 12%" -> "612 tasks")
+  while [[ -n $sum ]]; do
+    t=${sum//$'\e'\[*([0-9;])m/}
+    (( used + ${#t} + 5 <= G3_W )) && break
+    if [[ $sum == *" · "* ]]; then sum=${sum% · *}; else sum=""; fi
+  done
+  if [[ -n $sum ]]; then
+    # braces matter: macOS reads the first byte of a UTF-8 character after $name as part of the name
+    head+=" ${c_dim}·${c_off} $sum"; used=$(( used + ${#t} + 3 ))
+  fi
   fill=$(( G3_W - used ))
   (( fill < 0 )) && fill=0
   printf '%s %s%s%s%s' "$head" "$c_dim" "${G3_LINE:0:fill}" "$c_off" "$tail"
+}
+
+# ui_term_size -> UI_COLS UI_ROWS. Asks the terminal itself (stty on /dev/tty, the same
+# on GNU and BSD). `tput cols` inside $(...) is not used: macOS's tput only looks at
+# stdout, which is a pipe there, so it always answers 80x24.
+ui_term_size() {
+  local r="" c=""
+  read -r r c < <(stty size 2>/dev/null </dev/tty)   # silence first: no tty is normal in scripts
+  if [[ $r =~ ^[1-9][0-9]*$ && $c =~ ^[1-9][0-9]*$ ]]; then UI_ROWS=$r UI_COLS=$c; return 0; fi
+  # no terminal (piped from a script, CI): $COLUMNS/$LINES, then terminfo, then 100x24
+  UI_COLS=${COLUMNS:-} UI_ROWS=${LINES:-}
+  [[ $UI_COLS =~ ^[1-9][0-9]*$ ]] || UI_COLS=$(tput cols 2>/dev/null)
+  [[ $UI_ROWS =~ ^[1-9][0-9]*$ ]] || UI_ROWS=$(tput lines 2>/dev/null)
+  [[ $UI_COLS =~ ^[1-9][0-9]*$ ]] || UI_COLS=100
+  [[ $UI_ROWS =~ ^[1-9][0-9]*$ ]] || UI_ROWS=24
+  return 0
 }
 
 ui_tone() { # pct -> color for that load level

@@ -65,6 +65,7 @@ setup_provider_note() { # id -> where its credential was found, or how to provid
   local ref; ref=$(ai_detect "$1")
   case $ref in
     file:*) printf 'found · %s' "$(g3_tilde "${ref#file:}")" ;;
+    keychain:*) printf 'found · macOS Keychain' ;;
     env:*)  printf 'found · %s%s' '$' "${ref#env:}" ;;
     *) if [[ -n ${AI_ENV[$1]:-} ]]; then printf 'not found · %s' "$(g3_export_hint "${AI_ENV[$1]%% *}")"
        else printf 'not found · sign in to %s' "${AI_NAME[$1]}"; fi ;;
@@ -79,7 +80,8 @@ setup_write() { # sections-string providers-string interval
     printf '# g3rm0n configuration — written by g3rm0n setup on %s\n' "$(date '+%Y-%m-%d %H:%M')"
     printf '# Safe to edit by hand. Credentials are referenced, never stored:\n'
     printf '#   <provider>.credentials = file:<path>   (a login file another CLI keeps)\n'
-    printf '#   <provider>.credentials = env:<NAME>    (an API key exported in your shell)\n\n'
+    printf '#   <provider>.credentials = env:<NAME>    (an API key exported in your shell)\n'
+    printf '#   <provider>.credentials = keychain:<service>   (a login in the macOS Keychain)\n\n'
     printf 'sections = %s\n' "$1"
     printf 'interval = %s\n' "$3"
     printf 'providers = %s\n' "${2:-none}"

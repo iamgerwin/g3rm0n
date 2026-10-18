@@ -39,6 +39,9 @@ g3rm0n sits next to credentials for paid services. These rules are not optional.
   ID, email address or token; replace those fields with obvious placeholders.
 - The only file the dashboard writes outside the cache is `$G3_STATE_DIR/folded`
   (panel ids). Keep it that way: no usage numbers, no account data, no credentials.
+- Credentials may also live in the OS credential store (`keychain:<service>` on
+  macOS). Detection reads the item's attributes only; the secret is read through
+  `plat_keychain_read` at request time and handled exactly like a file or variable.
 - Platform backends run unprivileged, stock tools only, and never ask for `sudo`.
   Background measurements (macOS CPU) write numbers only, to the cache, and are
   removed on exit by `plat_cleanup`.

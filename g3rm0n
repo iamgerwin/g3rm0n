@@ -30,10 +30,18 @@ case ${G3_PLATFORM:-$(uname -s)} in
   Darwin|darwin) G3_PLATFORM=darwin ;;
   *) echo "g3rm0n runs on Linux and macOS (this system is $(uname -s))" >&2; exit 1 ;;
 esac
-# panel widths count characters, which needs a UTF-8 locale (macOS has no C.UTF-8)
-if [[ ${LC_ALL:-${LC_CTYPE:-${LANG:-}}} != *[Uu][Tt][Ff]?(-)8* ]]; then
-  if [[ $G3_PLATFORM == darwin ]]; then export LC_ALL=en_US.UTF-8; else export LC_ALL=C.UTF-8; fi
+# Locale: panel widths count characters, so the character set must be UTF-8 (macOS
+# has no C.UTF-8). Numbers must use "." in every locale: bash's EPOCHREALTIME, printf
+# and read -t, and awk in the backends, all follow LC_NUMERIC, and a "," (German,
+# French, Dutch, ...) breaks timing and money. Keep the user's character set, take
+# numbers from C, for g3rm0n and every tool it runs.
+_ctype=${LC_ALL:-${LC_CTYPE:-${LANG:-}}}
+if [[ $_ctype != *[Uu][Tt][Ff]?(-)8* ]]; then
+  if [[ $G3_PLATFORM == darwin ]]; then _ctype=en_US.UTF-8; else _ctype=C.UTF-8; fi
 fi
+unset LC_ALL
+export LC_CTYPE=$_ctype LC_NUMERIC=C
+unset _ctype
 
 # where g3rm0n lives, following symlinks (readlink -f isn't on every macOS)
 _src=${BASH_SOURCE[0]}

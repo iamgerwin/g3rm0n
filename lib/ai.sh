@@ -23,6 +23,8 @@ AI_DIR="$G3_CACHE_DIR/ai"
 declare -gA AI_NAME=([claude]="Claude" [codex]="Codex" [zai]="Z.ai" [deepseek]="DeepSeek" [openrouter]="OpenRouter")
 declare -gA AI_KIND=([claude]=tokens [codex]=tokens [zai]=tokens [deepseek]=credits [openrouter]=credits)
 declare -gA AI_ENV=([zai]="GLM_API_KEY ZAI_API_KEY Z_AI_API_KEY" [deepseek]="DEEPSEEK_API_KEY" [openrouter]="OPENROUTER_API_KEY")
+# where a CLI keeps its login in the OS credential store instead of a file (macOS)
+declare -gA AI_KEYCHAIN=([claude]="Claude Code-credentials")
 declare -gA AI_PID=()
 
 ai_default_file() {
@@ -32,10 +34,16 @@ ai_default_file() {
   esac
 }
 
-ai_detect() { # id -> "file:<path>" / "env:<VAR>" found on this machine, or nothing
+ai_detect() { # id -> "file:<path>" / "keychain:<service>" / "env:<VAR>" found here, or nothing
   local v f
   f=$(ai_default_file "$1")
-  if [[ -n $f ]]; then [[ -r $f ]] && printf 'file:%s' "$f"; return 0; fi
+  if [[ -n $f ]]; then
+    if [[ -r $f ]]; then printf 'file:%s' "$f"
+    elif [[ -n ${AI_KEYCHAIN[$1]:-} ]] && plat_keychain_has "${AI_KEYCHAIN[$1]}"; then
+      printf 'keychain:%s' "${AI_KEYCHAIN[$1]}"
+    fi
+    return 0
+  fi
   for v in ${AI_ENV[$1]}; do
     [[ -n ${!v:-} ]] && { printf 'env:%s' "$v"; return 0; }
   done
@@ -50,6 +58,7 @@ ai_ref() { # id -> configured reference, falling back to detection
 ai_ref_ready() { # reference -> true when it can be used right now
   case $1 in
     file:*) [[ -r $(g3_expand "${1#file:}") ]] ;;
+    keychain:*) plat_keychain_has "${1#keychain:}" ;;
     env:*)  local v=${1#env:}; [[ $v =~ ^[A-Za-z_][A-Za-z0-9_]*$ && -n ${!v:-} ]] ;;
     *) return 1 ;;
   esac
@@ -71,6 +80,7 @@ ai_secret() { # id jq-path -> secret from the provider's referenced credential
   local ref; ref=$(ai_ref "$1")
   case $ref in
     file:*) jq -r "$2 // empty" "$(g3_expand "${ref#file:}")" 2>/dev/null ;;
+    keychain:*) plat_keychain_read "${ref#keychain:}" | jq -r "$2 // empty" 2>/dev/null ;;
     env:*)  local v=${ref#env:}; printf '%s' "${!v:-}" ;;
   esac
 }

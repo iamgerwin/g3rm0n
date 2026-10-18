@@ -104,10 +104,11 @@ dw_df() { # paths... -> "mount<TAB>size<TAB>used<TAB>pct" (bytes), mount points 
     sub(/%/, "", $5); printf "%s\t%.0f\t%.0f\t%s\n", m, $2 * 1024, $3 * 1024, $5 }'
 }
 
-plat_root_pct() { # the data volume, where your files live (/ is a sealed, read-only snapshot)
+plat_root_pct() { # -> S_ROOT_P S_ROOT_LABEL: the data volume, where your files live
+  # (/ is a sealed, read-only system snapshot whose usage barely changes)
   local _m _s _u pct
   IFS=$'\t' read -r _m _s _u pct < <(dw_df "$HOME")
-  S_ROOT_P=$pct
+  S_ROOT_P=$pct S_ROOT_LABEL="~"
 }
 
 plat_disks() { # -> lines "label<TAB>fstype<TAB>size<TAB>used<TAB>pct" for / and your data volume
@@ -163,6 +164,12 @@ plat_vpn() { # -> VPN_DEV VPN_ADDR: the first tunnel interface with an IPv4 addr
 }
 
 plat_mtime() { stat -f %m "$1" 2>/dev/null; }   # file -> modification time (epoch)
+
+# The macOS Keychain, where Claude Code keeps its login. Checking that an item exists
+# reads its attributes only (no secret, no prompt). Reading the secret happens only
+# when its provider is called; macOS may ask once to allow it ("Always Allow").
+plat_keychain_has()  { have security && security find-generic-password -s "$1" >/dev/null 2>&1; }
+plat_keychain_read() { have security && security find-generic-password -s "$1" -w 2>/dev/null; }
 
 plat_cleanup() { # stop the CPU measurement and remove its files
   [[ -n ${DW_CPU_PID:-} ]] && kill "$DW_CPU_PID" 2>/dev/null

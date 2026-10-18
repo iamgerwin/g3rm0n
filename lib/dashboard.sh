@@ -50,7 +50,7 @@ dash_footer() { # interval -> the live footer, shortened to fit
 
 dash_draw() { # interval -> paints one frame on the alternate screen
   local rows frame
-  rows=$(tput lines 2>/dev/null || echo 24)
+  rows=$UI_ROWS
   OUT+=("$(dash_footer "$1")")
   # never print more lines than fit, or each frame scrolls the screen
   (( ${#OUT[@]} > rows - 1 )) && OUT=("${OUT[@]:0:rows-1}")
@@ -105,7 +105,7 @@ dash_run() { # once interval [fold-list]
     wait
     FOLD=()
     [[ -n $fold_list ]] && fold_apply "$fold_list"
-    cols=$(tput cols 2>/dev/null || echo "${COLUMNS:-100}")
+    ui_term_size; cols=$UI_COLS
     dash_sample
     dash_render 0 "$cols"
     printf '%s\n' "${OUT[@]}"
@@ -133,7 +133,7 @@ dash_run() { # once interval [fold-list]
       DASH_RESAMPLE=0
       next=$(( ${EPOCHREALTIME/./} + interval * 1000000 ))
     fi
-    COLS_NOW=$(tput cols 2>/dev/null || echo 100)
+    ui_term_size; COLS_NOW=$UI_COLS
     (( COLS_NOW != last_cols )) && printf '\e[2J'
     last_cols=$COLS_NOW
     dash_render 1 "$COLS_NOW"

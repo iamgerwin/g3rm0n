@@ -53,7 +53,7 @@ jobs:
           /bin/bash --version | head -n1
       - name: Syntax
         run: |
-          bash -n g3rm0n install.sh lib/*.sh lib/platform/*.sh completions/g3rm0n.bash tests/*.sh tests/lib/*.sh tests/mock/curl tests/mock/darwin/[a-z]* scripts/*.sh .githooks/* .claude/hooks/*.sh
+          bash -n g3rm0n install.sh lib/*.sh lib/platform/*.sh completions/g3rm0n.bash tests/*.sh tests/lib/*.sh tests/mock/curl tests/mock/darwin/[a-z]* tests/mock/tput-pipe/tput scripts/*.sh .githooks/* .claude/hooks/*.sh
           zsh -n completions/_g3rm0n tests/zsh-complete.zsh
           fish --no-execute completions/g3rm0n.fish
       - name: ShellCheck

@@ -92,6 +92,12 @@ check "title: live marker + key is 46"     is "$(w '◉' CPU ▾ '' 1)" 46
 check "title: folded summary is 46"        is "$(w '◉' CPU ▸ '24% · load 1.12' 1)" 46
 check "title: long summary is dropped"     lacks "$(ui_title '✦' 'AI Tokens · OpenRouter' ▸ 'far too long a summary to fit here' 7)" "far too"
 check "title: plain title unchanged"       is "$(ui_title '◉' CPU)" "◉ CPU ────────────────────────────────────────"
+# summaries that don't fit lose their last parts, never the whole summary
+long=$(ui_title '≡' Processes ▸ '612 tasks · WindowServer 12%' 5)
+check "title: long summary keeps its first part" contains "$long" "▸ ≡ Processes · 612 tasks ─"
+check "title: ... and drops the rest"      lacks "$long" "WindowServer"
+check "title: ... and stays 46 wide"       is "$(ui_len "$long")" 46
+check "title: a summary that fits is whole" contains "$(ui_title '≡' Processes ▸ '296 tasks · bash 3%' 5)" "296 tasks · bash 3%"
 
 # layout and hit-testing with four fake panels: two system, two AI
 fake() { PANEL_BODY=("row a" "row b" "row c"); PANEL_SUM="sum"; }
@@ -174,6 +180,22 @@ else
   check "live: ... nor fold anything"             is "$(cat "$state")" "memory"
   out=$(live "" '\x03')
   check "live: Ctrl-C restores the terminal"  contains "$out" $'\e[?1000l\e[?1049l'
+
+  # the layout follows the real terminal size, even where `tput` can't see it from
+  # inside $(...) (macOS's tput answers 80x24 there): see tests/mock/tput-pipe
+  sized() { # cols rows -> one live frame, with the macOS-style tput first on PATH
+    { sleep 1.2; printf q; sleep 0.3; } \
+      | pty_run bash "stty cols $1 rows $2; PATH='$root/tests/mock/tput-pipe':\$PATH '$root/g3rm0n' --no-ai --fold none -i 30" 2>&1
+  }
+  out=$(sized 140 60)
+  check "live size: two columns in a wide terminal"     contains "$out" "▾ ◉ CPU ──"
+  check "live size: ... paired side by side"            bash -c "grep -q '◉ CPU.*◫ Memory' <<<\"\$1\"" _ "$out"
+  check "live size: the full footer when it fits"       contains "$out" "or click a title to fold"
+  out=$(sized 80 60)
+  check "live size: one column in a narrow terminal"    bash -c "! grep -q '◉ CPU.*◫ Memory' <<<\"\$1\"" _ "$out"
+  check "live size: every panel shown in a tall terminal" contains "$out" "⇅ Network"
+  out=$(sized 80 12)
+  check "live size: frames never overflow a short terminal" lacks "$out" "⇅ Network"
 fi
 
 # ---- updating g3rm0n while it runs -------------------------------------------------------

@@ -9,7 +9,7 @@
 # The platform contract: every backend defines all of these (see ARCHITECTURE.md).
 SYS_CONTRACT=(plat_static plat_cpu plat_load plat_mem plat_net_bytes plat_disk_bytes plat_temp
   plat_uptime plat_root_pct plat_disks plat_battery plat_gpu plat_top plat_link plat_vpn
-  plat_mtime plat_cleanup)
+  plat_mtime plat_keychain_has plat_keychain_read plat_cleanup)
 
 sys_contract_missing() { # -> contract functions the loaded backend doesn't define
   local f
@@ -124,7 +124,7 @@ sys_panel_disk() {
     PANEL_BODY+=("$(ui_label "${label:0:6}")$(ui_bar "$pct" 10) $(ui_pct "$pct") ${c_dim}$(g3_bytes "$used")/$(g3_bytes "$size") $fs${c_off}")
   done < <(plat_disks)
   PANEL_BODY+=("$(ui_label I/O)${c_dim}read${c_off} $(g3_bytes "$S_DR")/s ${c_dim}· write${c_off} $(g3_bytes "$S_DW")/s")
-  PANEL_SUM="/ $(ui_tone "${S_ROOT_P:-0}")${S_ROOT_P:-?}%${c_off} · io $(g3_bytes $(( S_DR + S_DW )))/s"
+  PANEL_SUM="${S_ROOT_LABEL:-/} $(ui_tone "${S_ROOT_P:-0}")${S_ROOT_P:-?}%${c_off} · io $(g3_bytes $(( S_DR + S_DW )))/s"
 }
 
 sys_panel_power() {
