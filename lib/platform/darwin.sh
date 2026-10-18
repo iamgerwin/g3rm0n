@@ -2,14 +2,18 @@
 # platform/darwin.sh — the macOS backend: sysctl, vm_stat, iostat, netstat, ioreg, pmset.
 #
 # Implements the platform contract documented in ARCHITECTURE.md ("Platforms"), with
-# the stock tools every Mac has and no root. Two readings macOS only gives to root
-# (powermetrics) are replaced by the closest unprivileged equivalent:
-#   - per-core load  -> the core layout (performance / efficiency cores)
-#   - temperature    -> "no sensors exposed", as on Linux machines without sensors
+# the stock tools every Mac has and no root. Per-core load is something macOS only
+# gives to root (powermetrics), so the Cores row shows the core layout instead.
 #
-# CPU usage needs a measured window and macOS has no cumulative tick counter like
-# /proc/stat, so a 1-second `iostat` runs in the background and each sample reads the
-# last finished one. It never blocks a frame (except the very first one).
+# Temperatures come from the IOKit HID temperature sensors, the same unprivileged
+# source iStat Menus and similar tools use on Apple silicon, read through JavaScript
+# for Automation (osascript), which every Mac has. Intel Macs keep their sensors in
+# the SMC, which needs more than a script, so they show "no sensors exposed".
+#
+# Two readings take time: CPU usage needs a measured window (macOS has no cumulative
+# tick counter like /proc/stat; a 1-second `iostat`), and starting osascript takes a
+# moment. Both run as background probes between frames, and each sample reads the
+# last finished result, so they never block a frame (except the very first one).
 
 plat_static() { # -> S_OS S_MODEL S_THREADS S_GPU, plus the backend's own constants
   S_OS="macOS $(sw_vers -productVersion 2>/dev/null)"
@@ -23,16 +27,30 @@ plat_static() { # -> S_OS S_MODEL S_THREADS S_GPU, plus the backend's own consta
   else DW_CORES="$(sysctl -n hw.physicalcpu 2>/dev/null || echo "?") cores"; fi
   S_GPU=""
   dw_gpu_util >/dev/null && S_GPU=apple
-  DW_CPU_FILE="$G3_CACHE_DIR/cpu.$$" DW_CPU_PID="" S_CPU=0
+  DW_RUN="$G3_CACHE_DIR/run.$$" S_CPU=0
   mkdir -p "$G3_CACHE_DIR" 2>/dev/null
-  dw_cpu_probe
+  dw_probe cpu dw_iostat
+  dw_probe temp dw_sensors
 }
 
-dw_cpu_probe() { # start one 1-second iostat measurement in the background
-  have iostat || return 0
-  { iostat -C -c 2 -w 1 >"$DW_CPU_FILE.tmp" 2>/dev/null && mv -f "$DW_CPU_FILE.tmp" "$DW_CPU_FILE"; } &
-  DW_CPU_PID=$!
+# ---- background probes -------------------------------------------------------
+
+declare -gA DW_PID=()
+
+dw_probe() { # name command... -> run it in the background, unless the last run is still going
+  local f=$DW_RUN.$1
+  [[ -n ${DW_PID[$1]:-} ]] && kill -0 "${DW_PID[$1]}" 2>/dev/null && return 0
+  { "${@:2}" >"$f.tmp" 2>/dev/null && mv -f "$f.tmp" "$f"; } &
+  DW_PID[$1]=$!
 }
+
+dw_probe_out() { # name -> path of its last finished result (the very first one is waited for)
+  local f=$DW_RUN.$1
+  [[ ! -e $f && -n ${DW_PID[$1]:-} ]] && wait "${DW_PID[$1]}" 2>/dev/null
+  printf '%s' "$f"
+}
+
+dw_iostat() { have iostat && iostat -C -c 2 -w 1; }   # one 1-second CPU measurement
 
 dw_cpu_parse() { # iostat output on stdin -> us+sy of the last line, found by the header
   awk 'NR == 2 { for (i = 1; i <= NF; i++) { if ($i == "us") u = i; if ($i == "sy") s = i } }
@@ -41,13 +59,13 @@ dw_cpu_parse() { # iostat output on stdin -> us+sy of the last line, found by th
 }
 
 plat_cpu() { # -> S_CPU (0-100) and S_CORES (the core layout; per-core load needs root)
-  # the very first sample waits for the first measurement, later ones never do
-  [[ ! -e $DW_CPU_FILE && -n $DW_CPU_PID ]] && wait "$DW_CPU_PID" 2>/dev/null
-  if [[ -r $DW_CPU_FILE ]]; then
-    local v; v=$(dw_cpu_parse <"$DW_CPU_FILE")
+  local f v
+  f=$(dw_probe_out cpu)
+  if [[ -r $f ]]; then
+    v=$(dw_cpu_parse <"$f")
     [[ $v =~ ^[0-9]+$ ]] && S_CPU=$(( v > 100 ? 100 : v ))
   fi
-  if [[ -z $DW_CPU_PID ]] || ! kill -0 "$DW_CPU_PID" 2>/dev/null; then dw_cpu_probe; fi
+  dw_probe cpu dw_iostat
   S_CORES="${c_dim}${DW_CORES}${c_off}"
 }
 
@@ -91,7 +109,57 @@ plat_disk_bytes() { # -> DIO_R DIO_W: bytes read and written by every block stor
   DIO_R=${DIO_R:-0} DIO_W=${DIO_W:-0}
 }
 
-plat_temp() { :; }   # temperature sensors need root on macOS (powermetrics)
+# IOKit HID temperature sensors (usage page 0xff00, usage 5). JXA's ObjC bridge binds
+# the IOHIDEventSystemClient functions; prints "name<TAB>°C" for each sensor.
+# shellcheck disable=SC2016  # a JavaScript program: "$" is JXA's ObjC bridge
+DW_SENSORS_JS='ObjC.import("Foundation"); ObjC.import("IOKit");
+function run() {
+  ObjC.bindFunction("IOHIDEventSystemClientCreate", ["id", ["void *"]]);
+  ObjC.bindFunction("IOHIDEventSystemClientSetMatching", ["void", ["id", "id"]]);
+  ObjC.bindFunction("IOHIDEventSystemClientCopyServices", ["id", ["id"]]);
+  ObjC.bindFunction("IOHIDServiceClientCopyProperty", ["id", ["id", "id"]]);
+  ObjC.bindFunction("IOHIDServiceClientCopyEvent", ["id", ["id", "long long", "int", "long long"]]);
+  ObjC.bindFunction("IOHIDEventGetFloatValue", ["double", ["id", "int"]]);
+  var client = $.IOHIDEventSystemClientCreate(null);
+  if (!client || client.isNil()) return "#IOKit sensor client unavailable";
+  $.IOHIDEventSystemClientSetMatching(client,
+    $.NSDictionary.dictionaryWithObjectsForKeys($([65280, 5]), $(["PrimaryUsagePage", "PrimaryUsage"])));
+  var list = $.IOHIDEventSystemClientCopyServices(client);
+  if (!list || list.isNil()) return "#IOKit: no temperature sensor services";
+  var out = [];
+  for (var i = 0; i < list.count; i++) {
+    var svc = list.objectAtIndex(i);
+    var ev = $.IOHIDServiceClientCopyEvent(svc, 15, 0, 0);          /* 15: temperature */
+    if (!ev || ev.isNil()) continue;
+    var t = $.IOHIDEventGetFloatValue(ev, 15 << 16);
+    var name = $.IOHIDServiceClientCopyProperty(svc, $("Product"));
+    name = (name && !name.isNil()) ? ObjC.unwrap(name) : "sensor " + i;
+    if (t > 0 && t < 130) out.push(name + "\t" + t.toFixed(1));
+  }
+  out.push("#IOKit: " + list.count + " sensor services, " + out.length + " readings");
+  return out.join("\n");
+}'
+
+dw_sensors() { # -> "kind<TAB>°C<TAB>name" per sensor; kind is cpu for the CPU dies and clusters
+  have osascript || return 0
+  # "PMU tcal" is a fixed calibration value, not a temperature
+  # a "#" line says what the script saw; it becomes a note for `g3rm0n sensors`
+  osascript -l JavaScript <<<"$DW_SENSORS_JS" 2>&1 | awk -F'\t' '
+    /^#/ { sub(/^#/, ""); printf "note\t-\t%s\n", $0; next }
+    /execution error/ { printf "note\t-\tosascript: %s\n", $0; next }
+    NF >= 2 && $1 !~ /tcal/ && $2 + 0 > 0 && $2 + 0 < 130 {
+      kind = ($1 ~ /tdie|[pPeE]ACC|CPU|[Cc]ore/) ? "cpu" : "other"
+      printf "%s\t%s\t%s\n", kind, $2, $1 }'
+}
+
+plat_sensors() { dw_sensors; }   # every readable sensor, now (for `g3rm0n sensors`)
+
+plat_temp() { # -> sensor lines for this frame, from the last background reading
+  local f; f=$(dw_probe_out temp)
+  [[ -r $f ]] && cat "$f"
+  dw_probe temp dw_sensors
+  return 0
+}
 
 plat_uptime() { # -> S_UP seconds since boot ("{ sec = 1697040000, usec = 0 } ...")
   local boot; boot=$(sysctl -n kern.boottime 2>/dev/null)
@@ -171,8 +239,9 @@ plat_mtime() { stat -f %m "$1" 2>/dev/null; }   # file -> modification time (epo
 plat_keychain_has()  { have security && security find-generic-password -s "$1" >/dev/null 2>&1; }
 plat_keychain_read() { have security && security find-generic-password -s "$1" -w 2>/dev/null; }
 
-plat_cleanup() { # stop the CPU measurement and remove its files
-  [[ -n ${DW_CPU_PID:-} ]] && kill "$DW_CPU_PID" 2>/dev/null
-  rm -f "${DW_CPU_FILE:-}" "${DW_CPU_FILE:-}.tmp" 2>/dev/null
+plat_cleanup() { # stop the background probes and remove their files
+  local p
+  for p in "${DW_PID[@]}"; do kill "$p" 2>/dev/null; done
+  [[ -n ${DW_RUN:-} ]] && rm -f "$DW_RUN".* 2>/dev/null
   return 0
 }

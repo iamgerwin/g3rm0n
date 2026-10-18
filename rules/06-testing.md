@@ -13,6 +13,7 @@ tests/smoke.sh                                                 # behavior, no ne
 tests/shells.sh                                                # every installed shell
 tests/ui.sh                                                    # folding, keys, mouse
 tests/platform.sh                                              # backend contract, macOS fixtures, native backend
+tests/ai.sh                                                    # AI refresh intervals, rate limits, cache
 tests/install.sh                                               # run-time files only, tarball, bash 3.2
 tests/docs.sh                                                  # docs match the code
 ```
@@ -35,6 +36,12 @@ tarballs carry no dev files, that the latest release is found without the
 rate-limited GitHub API (with a clear message when it can't be), and that the
 installer works under bash 3.2 (CI's macOS
 `/bin/bash`; locally, point `G3_TEST_BASH32` at one).
+
+`tests/ai.sh` covers the AI refresh policy with the mock `curl` and its request log:
+intervals and `<provider>.refresh`, backoff and `Retry-After`, the cross-process
+lock (several copies at once make one call), legacy status files, what panels show
+while rate limited or offline, and windows that reset while waiting. Any change to
+how or how often a provider is called needs a case there.
 
 `tests/ui.sh` unit-tests the pure pieces of the interactive dashboard (input
 decoding, key bindings, fold state, titles, layout and hit-testing) and then drives

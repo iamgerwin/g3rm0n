@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # core.sh — version, paths, colors, config and small shared helpers
 
-G3_VERSION="0.1.5"
+G3_VERSION="0.1.6"
 G3_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/g3rm0n"
 G3_CONFIG_FILE="$G3_CONFIG_DIR/config"
 G3_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/g3rm0n"
@@ -85,6 +85,16 @@ g3_export_hint() { # VAR -> how to export it in the user's shell
     elvish)   printf 'set-env %s …' "$1" ;;
     *)        printf 'export %s=…' "$1" ;;
   esac
+}
+
+# seconds -> "<1m" / "12m" / "3h" / "2d": short ages that fit beside other text
+g3_ago() {
+  local s=${1:-0}
+  (( s < 0 )) && s=0
+  if   (( s < 60 ));    then printf '<1m'
+  elif (( s < 3600 ));  then printf '%dm' $(( s / 60 ))
+  elif (( s < 86400 )); then printf '%dh' $(( s / 3600 ))
+  else printf '%dd' $(( s / 86400 )); fi
 }
 
 g3_expand() { # "~/x" -> "$HOME/x"

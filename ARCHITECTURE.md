@@ -87,7 +87,8 @@ into rates, panels and the health score, so features can't differ between platfo
 | `plat_mem` | `S_MEM_T` `S_MEM_A` `S_CACHE` `S_SWAP_T` `S_SWAP_F` (bytes) | `/proc/meminfo` | `vm_stat`, `sysctl` |
 | `plat_net_bytes` | `NET_RX` `NET_TX` (cumulative bytes) | `/proc/net/dev` | `netstat -ibn` |
 | `plat_disk_bytes` | `DIO_R` `DIO_W` (cumulative bytes) | `/proc/diskstats` | `ioreg` block storage statistics |
-| `plat_temp` | prints °C, or nothing | thermal zones, hwmon | nothing (root only) |
+| `plat_temp` | prints this frame's sensor lines (see `plat_sensors`) | `plat_sensors` (sysfs is instant) | the last background reading |
+| `plat_sensors` | prints `kind °C name` per temperature sensor, `kind` = `cpu` or `other` | thermal zones, hwmon (`coretemp`, `k10temp`, … are CPU) | IOKit HID sensors via JavaScript for Automation (`pACC`/`eACC` clusters and `tdie` dies are CPU) |
 | `plat_uptime` | `S_UP` (seconds) | `/proc/uptime` | `sysctl kern.boottime` |
 | `plat_root_pct` | `S_ROOT_P` `S_ROOT_LABEL` (health score, folded Disk title) | `df /`, labelled `/` | `df` of the data volume, labelled `~` |
 | `plat_disks` | prints `mount fstype size used pct` rows | `df -B1 --output` | `df -kP`, `mount` |
@@ -123,6 +124,21 @@ from an older layout behind. `.gitattributes` keeps tests, rules, CI, scripts an
 contributor docs out of the release tarballs as well. The installer itself stays
 compatible with bash 3.2, because on macOS `curl … | bash` runs the system bash.
 `tests/install.sh` checks all of this.
+
+## AI refresh policy
+
+Each provider's usage is fetched in the background by `ai_refresh` and cached as one
+row of numbers (`<id>.row`). Frames only ever read the cache.
+
+- **How often:** `ai_ttl` gives 60 s by default, a longer per-provider default from
+  `AI_REFRESH` (Claude 300 s), or `<id>.refresh` from the config.
+- **Shared:** `<id>.status` holds `code next-attempt consecutive-429s`. Every running
+  g3rm0n reads it, and `<id>.lock` lets only one of them call the provider.
+- **After a 429:** `ai_backoff` waits `Retry-After` when the server asks for longer,
+  otherwise 5, 10, 20 … up to 60 minutes. Any success resets it.
+- **Meanwhile:** the panel keeps the last good row and says how old it is and when the
+  next try is. A window whose reset time has passed is shown as a new, empty window,
+  marked `~` as an estimate.
 
 ## The live loop
 

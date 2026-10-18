@@ -11,6 +11,7 @@ end
 
 complete -c g3rm0n -f
 complete -c g3rm0n -n __fish_use_subcommand -a setup -d 'Choose sections and AI providers'
+complete -c g3rm0n -n __fish_use_subcommand -a sensors -d 'List readable temperature sensors'
 complete -c g3rm0n -n __fish_use_subcommand -a version -d 'Print the version'
 complete -c g3rm0n -n __fish_use_subcommand -a help -d 'Show help'
 

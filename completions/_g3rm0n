@@ -27,7 +27,7 @@ _g3rm0n() {
   )
   if (( CURRENT == 2 )); then
     _arguments -s $opts \
-      '1:command:((setup\:"choose sections and AI providers" version\:"print the version" help\:"show help"))'
+      '1:command:((setup\:"choose sections and AI providers" sensors\:"list readable temperature sensors" version\:"print the version" help\:"show help"))'
   elif [[ $words[2] == setup ]]; then
     local -a setup_opts=(
       '--defaults:write a config with everything detected'
