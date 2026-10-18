@@ -49,6 +49,8 @@ All notable changes to g3rm0n are documented here. The format follows
 - `curl … | sh` is now refused with the "run this installer with bash" hint on
   systems where `sh` is bash (macOS, Fedora), instead of running in POSIX mode.
 - `zsh g3rm0n` finds bash correctly (zsh doesn't split an unquoted `$PATH`).
+- fish: completing a comma-separated `--sections` or `--fold` list works on macOS too
+  (fish's own list helper needs GNU sed).
 
 ## [0.1.2] - 2026-10-18
 
