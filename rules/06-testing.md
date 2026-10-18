@@ -31,7 +31,9 @@ there and, for macOS, a fixture.
 
 `tests/install.sh` checks that only run-time files are installed, with only the
 installing OS's backend, that the installed copy runs on its own, that release
-tarballs carry no dev files, and that the installer works under bash 3.2 (CI's macOS
+tarballs carry no dev files, that the latest release is found without the
+rate-limited GitHub API (with a clear message when it can't be), and that the
+installer works under bash 3.2 (CI's macOS
 `/bin/bash`; locally, point `G3_TEST_BASH32` at one).
 
 `tests/ui.sh` unit-tests the pure pieces of the interactive dashboard (input

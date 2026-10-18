@@ -2,9 +2,26 @@
 # Mock curl for tests: canned, synthetic responses for every AI provider endpoint.
 # Mirrors how ai_get calls curl: headers on stdin (-H @-), "-w \n%{http_code}".
 # A bearer token of "bad" yields HTTP 401. Never put real data in here.
-headers=$(cat)
+# Release lookups (install.sh): G3_MOCK_GITHUB=ok (default) | noredirect | down
+headers=""
+[[ " $* " == *" -H @- "* ]] && headers=$(cat)
 url=""
 for a in "$@"; do [[ $a == https://* ]] && url=$a; done
+case $url in
+  https://github.com/*/releases/latest)
+    case ${G3_MOCK_GITHUB:-ok} in
+      ok) printf 'https://github.com/iamgerwin/g3rm0n/releases/tag/v9.8.7' ;;
+      noredirect) printf '%s' "$url" ;;
+      down) echo "curl: (22) The requested URL returned error: 503" >&2; exit 22 ;;
+    esac
+    exit 0 ;;
+  https://api.github.com/*/releases/latest)
+    case ${G3_MOCK_GITHUB:-ok} in
+      down) echo "curl: (56) The requested URL returned error: 403" >&2; exit 56 ;;
+      *) printf '{\n  "tag_name": "v9.8.6",\n  "name": "g3rm0n v9.8.6"\n}\n' ;;
+    esac
+    exit 0 ;;
+esac
 
 if [[ $headers == *"Bearer bad"* ]]; then
   printf '%s\n401' '{"error":"unauthorized"}'

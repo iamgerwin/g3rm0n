@@ -6,6 +6,13 @@ All notable changes to g3rm0n are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The installer no longer fails with `curl: (56) … 403` on networks that share one
+  public IP (offices, schools, CI machines). It finds the latest release through
+  GitHub's `releases/latest` redirect instead of the rate-limited API, which is
+  kept as a fallback.
+
 ## [0.1.4] - 2026-10-18
 
 ### Fixed
