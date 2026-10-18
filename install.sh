@@ -142,7 +142,11 @@ while (( $# )); do
 done
 
 plat=$(platform) || exit 1
-if ! bash5=$(find_bash5); then
+bash5_v=""
+if bash5=$(find_bash5); then
+  # shellcheck disable=SC2016  # expanded by that bash
+  bash5_v=$("$bash5" -c 'printf %s "${BASH_VERSION%%(*}"')
+else
   if [[ $plat == darwin ]]; then
     fail "g3rm0n needs bash 5 or newer; macOS ships 3.2. Install it with Homebrew (https://brew.sh): brew install bash"
   fi
@@ -219,5 +223,5 @@ for dep in curl jq; do
     else say "Optional: install $dep to enable the AI panels."; fi
   fi
 done
-if [[ $plat == darwin ]]; then say "Using $("$bash5" --version | head -n1 | cut -d'(' -f1)from $bash5"; fi
+if [[ $plat == darwin ]]; then say "Using bash ${bash5_v:-5} from $bash5"; fi
 say "Run: g3rm0n        (or g3rm0n setup to choose what it shows)"
