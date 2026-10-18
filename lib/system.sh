@@ -86,17 +86,22 @@ sys_temp_pick() {
 sys_sensors_report() { # `g3rm0n sensors`: every readable sensor, and which one Temp shows
   local kind v name n=0
   local -a lines=()
-  mapfile -t lines < <(plat_sensors | sort -t $'\t' -k1,1 -k2,2nr)
+  local -a notes=()
+  mapfile -t lines < <(plat_sensors | grep -v '^note' | sort -t $'\t' -k1,1 -k2,2nr)
+  mapfile -t notes < <(plat_sensors | sed -n 's/^note\t-\t//p')
   printf '%s\n' "${c_bold}Temperature sensors g3rm0n can read${c_off} ${c_dim}(${G3_PLATFORM})${c_off}"
   for kind in "${lines[@]}"; do
     IFS=$'\t' read -r kind v name <<<"$kind"
     printf '  %-6s %6s°C  %s\n' "${kind/cpu/CPU}" "$v" "$name"
     n=$(( n + 1 ))
   done
+  local note
   if (( n == 0 )); then
     printf '  %s\n' "${c_dim}none readable on this machine: the Power panel shows \"no sensors exposed\"${c_off}"
+    for note in "${notes[@]}"; do printf '  %s\n' "${c_dim}${note}${c_off}"; done
     return 0
   fi
+  for note in "${notes[@]}"; do printf '  %s\n' "${c_dim}${note}${c_off}"; done
   sys_temp_pick < <(printf '%s\n' "${lines[@]}")
   printf '\n  %s\n' "Temp shows ${c_bold}${S_TEMP}°C${c_off} ${c_dim}(${S_TEMP_SRC}: the hottest $( [[ $S_TEMP_SRC == CPU ]] && echo "CPU sensor" || echo "sensor, as none is named CPU"))${c_off}"
 }

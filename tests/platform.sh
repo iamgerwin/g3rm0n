@@ -99,6 +99,9 @@ check "darwin sensors: CPU clusters and dies are CPU"  bash -c "grep -qE '^  CPU
 check "darwin sensors: a hotter SoC sensor isn't CPU"  bash -c "grep -qE '^  other +55.9°C  SOC' <<<\"\$1\"" _ "$out"
 check "darwin sensors: the calibration value is ignored" lacks "$out" "tcal"
 check "darwin sensors: says what Temp shows"           contains "$out" "Temp shows 52°C (CPU"
+check "darwin sensors: reports what IOKit returned"    contains "$out" "IOKit: 9 sensor services, 8 readings"
+out=$(PATH="$root/tests/mock/darwin:$PATH" G3_PLATFORM=darwin G3_MOCK_SENSORS=none "$root/g3rm0n" sensors 2>&1)
+check "darwin sensors: explains an empty list"         bash -c "grep -q 'none readable' <<<\"\$1\" && grep -q 'IOKit: 0 sensor services' <<<\"\$1\"" _ "$out"
 
 # ---- 2b. macOS Keychain logins (Claude Code keeps its login there on a Mac) -------------
 k=$tmp/kc; mkdir -p "$k/home"

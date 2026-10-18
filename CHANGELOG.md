@@ -31,7 +31,8 @@ All notable changes to g3rm0n are documented here. The format follows
 ### Added
 
 - `g3rm0n sensors` lists every temperature sensor g3rm0n can read, and which one the
-  Temp row shows.
+  Temp row shows. On macOS it also says what the system returned, which explains an
+  empty list.
 - `<provider>.refresh` in the config sets how often that provider is asked, in seconds.
 
 ### Changed

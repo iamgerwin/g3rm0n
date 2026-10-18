@@ -121,11 +121,11 @@ function run() {
   ObjC.bindFunction("IOHIDServiceClientCopyEvent", ["id", ["id", "long long", "int", "long long"]]);
   ObjC.bindFunction("IOHIDEventGetFloatValue", ["double", ["id", "int"]]);
   var client = $.IOHIDEventSystemClientCreate(null);
-  if (!client || client.isNil()) return "";
+  if (!client || client.isNil()) return "#IOKit sensor client unavailable";
   $.IOHIDEventSystemClientSetMatching(client,
     $.NSDictionary.dictionaryWithObjectsForKeys($([65280, 5]), $(["PrimaryUsagePage", "PrimaryUsage"])));
   var list = $.IOHIDEventSystemClientCopyServices(client);
-  if (!list || list.isNil()) return "";
+  if (!list || list.isNil()) return "#IOKit: no temperature sensor services";
   var out = [];
   for (var i = 0; i < list.count; i++) {
     var svc = list.objectAtIndex(i);
@@ -136,13 +136,17 @@ function run() {
     name = (name && !name.isNil()) ? ObjC.unwrap(name) : "sensor " + i;
     if (t > 0 && t < 130) out.push(name + "\t" + t.toFixed(1));
   }
+  out.push("#IOKit: " + list.count + " sensor services, " + out.length + " readings");
   return out.join("\n");
 }'
 
 dw_sensors() { # -> "kind<TAB>°C<TAB>name" per sensor; kind is cpu for the CPU dies and clusters
   have osascript || return 0
   # "PMU tcal" is a fixed calibration value, not a temperature
-  osascript -l JavaScript <<<"$DW_SENSORS_JS" 2>/dev/null | awk -F'\t' '
+  # a "#" line says what the script saw; it becomes a note for `g3rm0n sensors`
+  osascript -l JavaScript <<<"$DW_SENSORS_JS" 2>&1 | awk -F'\t' '
+    /^#/ { sub(/^#/, ""); printf "note\t-\t%s\n", $0; next }
+    /execution error/ { printf "note\t-\tosascript: %s\n", $0; next }
     NF >= 2 && $1 !~ /tcal/ && $2 + 0 > 0 && $2 + 0 < 130 {
       kind = ($1 ~ /tdie|[pPeE]ACC|CPU|[Cc]ore/) ? "cpu" : "other"
       printf "%s\t%s\t%s\n", kind, $2, $1 }'
