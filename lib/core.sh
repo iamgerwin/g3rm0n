@@ -57,6 +57,34 @@ g3_duration() {
   else printf '%dm' $(( s / 60 )); fi
 }
 
+g3_tilde() { # "$HOME/x" -> "~/x" (display only)
+  # shellcheck disable=SC2088  # a literal "~" is the point
+  if [[ $1 == "$HOME"/* ]]; then printf '~/%s' "${1#"$HOME"/}"; else printf '%s' "$1"; fi
+}
+
+# The shell g3rm0n was started from (its parent process), else the login shell.
+# Used only to phrase hints in that shell's own syntax.
+g3_user_shell() {
+  local s=""
+  [[ -r /proc/$PPID/comm ]] && read -r s </proc/$PPID/comm
+  s=${s#-}
+  case $s in
+    bash|zsh|fish|ksh|mksh|ksh93|dash|sh|tcsh|csh|nu|xonsh|elvish) printf '%s' "$s" ;;
+    *) s=${SHELL##*/}; printf '%s' "${s:-sh}" ;;
+  esac
+}
+
+g3_export_hint() { # VAR -> how to export it in the user's shell
+  case ${G3_USER_SHELL:=$(g3_user_shell)} in
+    fish)     printf 'set -gx %s …' "$1" ;;
+    tcsh|csh) printf 'setenv %s …' "$1" ;;
+    nu)       printf '%senv.%s = …' '$' "$1" ;;
+    xonsh)    printf '$%s = …' "$1" ;;
+    elvish)   printf 'set-env %s …' "$1" ;;
+    *)        printf 'export %s=…' "$1" ;;
+  esac
+}
+
 g3_expand() { # "~/x" -> "$HOME/x"
   # shellcheck disable=SC2088  # matching a literal "~/" prefix on purpose
   if [[ $1 == "~/"* ]]; then printf '%s' "$HOME/${1#\~/}"; else printf '%s' "$1"; fi

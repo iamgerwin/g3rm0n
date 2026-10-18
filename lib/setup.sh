@@ -43,7 +43,8 @@ ui_checklist() {
     IFS= read -rsn1 key </dev/tty || { printf '\e[?25h'; return 1; }
     case $key in
       $'\e') IFS= read -rsn2 -t 0.05 rest </dev/tty
-             case $rest in '[A') cur=$(( (cur - 1 + n) % n )) ;; '[B') cur=$(( (cur + 1) % n )) ;; esac ;;
+             # normal (\e[A) and application (\eOA) cursor-key modes
+             case $rest in '[A'|OA) cur=$(( (cur - 1 + n) % n )) ;; '[B'|OB) cur=$(( (cur + 1) % n )) ;; esac ;;
       k) cur=$(( (cur - 1 + n) % n )) ;;
       j) cur=$(( (cur + 1) % n )) ;;
       ' ') on[cur]=$(( ! on[cur] )) ;;
@@ -63,9 +64,9 @@ ui_checklist() {
 setup_provider_note() { # id -> where its credential was found, or how to provide one
   local ref; ref=$(ai_detect "$1")
   case $ref in
-    file:*) printf 'found · %s' "${ref#file:}" | sed "s|$HOME|~|" ;;
+    file:*) printf 'found · %s' "$(g3_tilde "${ref#file:}")" ;;
     env:*)  printf 'found · %s%s' '$' "${ref#env:}" ;;
-    *) if [[ -n ${AI_ENV[$1]:-} ]]; then printf 'not found · export %s' "${AI_ENV[$1]%% *}"
+    *) if [[ -n ${AI_ENV[$1]:-} ]]; then printf 'not found · %s' "$(g3_export_hint "${AI_ENV[$1]%% *}")"
        else printf 'not found · sign in to %s' "${AI_NAME[$1]}"; fi ;;
   esac
 }
@@ -87,7 +88,8 @@ setup_write() { # sections-string providers-string interval
       if [[ -z $ref ]]; then
         if [[ -n ${AI_ENV[$id]:-} ]]; then ref="env:${AI_ENV[$id]%% *}"; else ref="file:$(ai_default_file "$id")"; fi
       fi
-      printf '%s.credentials = %s\n' "$id" "${ref/#file:$HOME/file:~}"
+      [[ $ref == file:* ]] && ref="file:$(g3_tilde "${ref#file:}")"
+      printf '%s.credentials = %s\n' "$id" "$ref"
     done
   } >"$tmp"
   chmod 600 "$tmp"
@@ -106,6 +108,7 @@ setup_show() {
   for id in "${G3_PROVIDERS[@]}"; do
     printf '  %s %s\n' "$(ui_pad "${AI_NAME[$id]}" 12)" "${c_dim}$(setup_provider_note "$id")${c_off}"
   done
+  printf '\n  %s\n' "${c_dim}API keys must be exported in the shell that starts g3rm0n: $(g3_export_hint NAME)${c_off}"
   have curl && have jq || printf '\n  %s\n' "${c_yellow}AI panels need curl and jq${c_off}"
 }
 

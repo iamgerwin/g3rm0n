@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 # g3rm0n — a live terminal dashboard for your Linux machine and your AI usage
+
+# Started with sh/dash/zsh/ksh (e.g. `sh g3rm0n`)? Hand over to bash before any bash
+# syntax is parsed. This block must stay POSIX.
+if [ -z "${BASH_VERSION:-}" ]; then
+  command -v bash >/dev/null 2>&1 && exec bash "$0" "$@"
+  echo "g3rm0n needs bash 5 or newer, and bash was not found" >&2
+  exit 1
+fi
 set -o pipefail
 
 if (( BASH_VERSINFO[0] < 5 )); then
