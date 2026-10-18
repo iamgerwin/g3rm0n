@@ -10,49 +10,87 @@ balances (DeepSeek, OpenRouter). It's pure bash, has no daemon, and only ever re
 [![release](https://img.shields.io/github/v/release/iamgerwin/g3rm0n)](https://github.com/iamgerwin/g3rm0n/releases)
 [![license](https://img.shields.io/github/license/iamgerwin/g3rm0n)](LICENSE)
 
+## Get started in 30 seconds
+
+No account, no setup and no admin password. Copy one line, paste it, and you're done.
+
+**On a Mac**
+
+1. Open **Terminal**: press <kbd>⌘</kbd> <kbd>Space</kbd>, type `Terminal`, press <kbd>Return</kbd>.
+2. Paste this line and press <kbd>Return</kbd>:
+
+   ```bash
+   brew install bash jq && curl -fsSL https://raw.githubusercontent.com/iamgerwin/g3rm0n/main/install.sh | bash
+   ```
+
+   No Homebrew yet? Get it first from [brew.sh](https://brew.sh). It's one line too.
+3. Type `g3rm0n` and press <kbd>Return</kbd>.
+
+**On Linux** (Ubuntu, Debian, Fedora, Arch, …)
+
+1. Open a terminal (<kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>T</kbd> on Ubuntu).
+2. Paste this line and press <kbd>Enter</kbd>:
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/iamgerwin/g3rm0n/main/install.sh | bash
+   ```
+3. Type `g3rm0n` and press <kbd>Enter</kbd>.
+
+That's all. Click any panel's title (or press its number) to fold it away, and press
+<kbd>q</kbd> to quit. If you use Claude Code, Codex or Z.ai, your usage limits appear
+by themselves. If `g3rm0n` isn't found, open a new terminal window and try again.
+
+## What you'll see
+
+<!-- sample:full -->
 ```
-g3rm0n  ● 96 Healthy  workstation · Ubuntu 24.04.1 LTS · 6.8.0-45-generic
+g3rm0n  ● 96 Healthy  workstation · Ubuntu 24.04.1 LTS · Oct 08 | 12:34PM UTC
 
-◉ CPU ────────────────────────────────────────  ◫ Memory ─────────────────────────────────────
-Usage  ████░░░░░░░░░░░░   24%                   Used   ███████░░░░░░░░░   44% 13.9G/31.2G
+▾ ◉ CPU ──────────────────────────────────── 1  ▾ ◫ Memory ───────────────────────────────── 2
+Usage  ████░░░░░░░░░░░░   24%                   Used   ███████░░░░░░░░░   44% 13.8G/31.1G
 Cores  ▂▁▃▁▅▂▁▁▂▇▁▂▁▁▃▁                         Swap   ░░░░░░░░░░░░░░░░    0% 0B/8.0G
-Load   1.12 · 0.98 · 0.87 · 16 threads          Free   17.3G available
-Model  AMD Ryzen 7 7840U w/ Radeon 780M         Cache  9.6G buffers & page cache
+Load   1.12 · 0.98 · 0.87 · 16 threads          Free   17.2G available
+Model  AMD Ryzen 7 7840U w/ Radeon 780M         Cache  9.5G buffers & page cache
 
-▤ Disk ───────────────────────────────────────  ◪ Power ──────────────────────────────────────
-/      ███████░░░   68% 312.4G/467.3G ext4      Batt   ████████░░   81% · discharging
-I/O    read 1.2M/s · write 340.0K/s             GPU    ██░░░░░░░░   18%
-                                                Temp   54°C hottest sensor
+▾ ▤ Disk ─────────────────────────────────── 3  ▾ ◪ Power ────────────────────────────────── 4
+/      ███████░░░   68% 312.4G/467.2G ext4      Batt   ████████░░   81% · discharging
+I/O    read 1.1M/s · write 340.0K/s             GPU    ██░░░░░░░░   18%
+                                                Temp   54°C CPU
                                                 Uptime 3d 6h
 
-≡ Processes ──────────────────────────────────  ⇅ Network ────────────────────────────────────
-Tasks  412 total · 2 running                    Down   ▁▁▂▅█▃▁▁▁▂▁▁▁▁▁▁ 2.4M/s
-1      firefox          █░░░░  18.2%    1.9G    Up     ▁▁▁▂▃▁▁▁▁▁▁▁▁▁▁▁ 96.0K/s
+▾ ≡ Processes ────────────────────────────── 5  ▾ ⇅ Network ──────────────────────────────── 6
+Tasks  412 total · 2 running                    Down   ▁▁▂▄█▃▁▁▁▂▁▁▁▁▁▁ 2.3M/s
+1      firefox          █░░░░  18.2%    1.8G    Up     ▃▃▃▅█▃▃▃▃▃▃▃▃▃▃▃ 96.0K/s
 2      code             █░░░░   7.5%  812.4M    Link   wlp1s0 · 192.168.1.24
-3      node             █░░░░   3.1%  240.8M    VPN    tailscale0 · 100.101.1.7
+3      node             █░░░░   3.1%  240.7M    VPN    tailscale0 · 100.101.1.7
 
-✦ AI Tokens · Claude ─────────────────────────  ✦ AI Tokens · Codex ──────────────────────────
+▾ ✦ AI Tokens · Claude ───────────────────── 7  ▾ ✦ AI Tokens · Codex ────────────────────── 7
 5h     ████░░░░░░   42% · resets in 2h 14m      5h     █░░░░░░░░░   12% · resets in 3h 51m
 Week   ██░░░░░░░░   17% · resets in 3d 4h       Week   █░░░░░░░░░    3% · resets in 5d 18h
 Left   58% of 5h window · max 5x plan           Left   88% of 5h window · plus plan
 
-✦ AI Tokens · Z.ai ───────────────────────────
+▾ ✦ AI Tokens · Z.ai ─────────────────────── 7
 5h     ██████░░░░   64% · resets in 58m
 Tools  █░░░░░░░░░   10% · resets in 9d 23h
 Left   36% of 5h window · lite plan
 
-◆ AI Credits · DeepSeek ──────────────────────  ◆ AI Credits · OpenRouter ────────────────────
+▾ ◆ AI Credits · DeepSeek ────────────────── 8  ▾ ◆ AI Credits · OpenRouter ──────────────── 8
 Left   ¥110.00 · prepaid balance                Spent  ███████░░░   67% · $8.20 left of $25.00
 Usage  not reported by this API                 Usage  $0.42 day · $3.10 wk · $12.50 mo
 Split  topped up ¥100.00 · granted ¥10.00       Key    no spend cap
+
+g3rm0n v0.1.6 · every 2s · 1-8 or click a title to fold · -/+ all · r refresh · q quit
 ```
+<!-- /sample -->
+
 
 ## Features
 
 - **Glanceable system panels.** CPU with a per-core activity strip, memory and swap,
   disk space and I/O rates, battery and GPU (NVIDIA or AMD), the hottest temperature
   sensor, the busiest processes, and network throughput with VPN detection.
-- **A health score** in the header that flags CPU, memory, swap, heat or disk pressure.
+- **A health score** in the header that flags CPU, memory, swap, heat or disk pressure,
+  next to the date and time, in a header you can rearrange.
 - **AI Tokens:** how much of each subscription's 5-hour and weekly window you've used,
   and when each one resets.
 - **AI Credits:** how much prepaid balance is left and what you've spent per day, week and month.
@@ -186,19 +224,35 @@ Sections: `cpu` `memory` `disk` `power` `processes` `network` `ai-tokens` `ai-cr
 Every panel folds, like an accordion, into a single title line that keeps the number
 you most need:
 
+<!-- sample:folded -->
 ```
-▾ ◉ CPU ──────────────────────────────────── 1  ▸ ◫ Memory · 44% · 13.9G/31.2G ───────────── 2
+g3rm0n  ● 96 Healthy  workstation · Ubuntu 24.04.1 LTS · Oct 08 | 12:34PM UTC
+
+▾ ◉ CPU ──────────────────────────────────── 1  ▸ ◫ Memory · 44% · 13.8G/31.1G ───────────── 2
 Usage  ████░░░░░░░░░░░░   24%
 Cores  ▂▁▃▁▅▂▁▁▂▇▁▂▁▁▃▁
 Load   1.12 · 0.98 · 0.87 · 16 threads
 Model  AMD Ryzen 7 7840U w/ Radeon 780M
 
 ▾ ▤ Disk ─────────────────────────────────── 3  ▸ ◪ Power · batt 81% · 54°C ──────────────── 4
-/      ███████░░░   68% 312.4G/467.3G ext4
-I/O    read 1.2M/s · write 340.0K/s
+/      ███████░░░   68% 312.4G/467.2G ext4
+I/O    read 1.1M/s · write 340.0K/s
 
-▸ ≡ Processes · 412 tasks · firefox 18% ──── 5  ▸ ⇅ Network · ↓ 2.4M/s · ↑ 96.0K/s ───────── 6
+▸ ≡ Processes · 412 tasks · firefox 18% ──── 5  ▸ ⇅ Network · ↓ 2.3M/s · ↑ 96.0K/s ───────── 6
+
+▾ ✦ AI Tokens · Claude ───────────────────── 7  ▾ ✦ AI Tokens · Codex ────────────────────── 7
+5h     ████░░░░░░   42% · resets in 2h 14m      5h     █░░░░░░░░░   12% · resets in 3h 51m
+Week   ██░░░░░░░░   17% · resets in 3d 4h       Week   █░░░░░░░░░    3% · resets in 5d 18h
+Left   58% of 5h window · max 5x plan           Left   88% of 5h window · plus plan
+
+▾ ✦ AI Tokens · Z.ai ─────────────────────── 7
+5h     ██████░░░░   64% · resets in 58m
+Tools  █░░░░░░░░░   10% · resets in 9d 23h
+Left   36% of 5h window · lite plan
+
+▸ ◆ AI Credits · DeepSeek · ¥110.00 left ─── 8  ▸ ◆ AI Credits · OpenRouter · $8.20 left ─── 8
 ```
+<!-- /sample -->
 
 `▾` marks an open panel and `▸` a folded one. The digit at the end of each title is
 that section's shortcut.
@@ -223,6 +277,19 @@ VS Code's terminal and xterm. Inside **tmux**, turn on `set -g mouse on`. When
 g3rm0n has the mouse, hold **Shift** (on macOS, **Option** in iTerm2 and Terminal.app)
 while dragging to select text, or start it with `--no-mouse`, or set `mouse = off`.
 Keyboard shortcuts work everywhere.
+
+### The header
+
+```
+g3rm0n  ● 96 Healthy  workstation · Ubuntu 24.04.1 LTS · Oct 08 | 12:35PM UTC
+```
+
+The top line shows the health score, the machine, the OS, and the date and time in
+your time zone (with its usual abbreviation, such as `PST` or `CET`). It's made of
+parts you can rearrange or trim with `header` in the config, for example
+`header = logo health time date`, or bring the kernel version back with
+`header = logo health host os kernel date time`. In a narrow window, the OS, host and
+date give way first; the health score and time always stay.
 
 ## Setup
 
@@ -313,6 +380,7 @@ openrouter.credentials = env:OPENROUTER_API_KEY
 | `providers` | AI providers to show: `auto` (every one detected), a list, or `none` |
 | `<provider>.credentials` | Where that provider's credential lives: `file:<path>`, `env:<VARIABLE>` or (macOS) `keychain:<service>` |
 | `mouse` | `on` (default) lets you click titles to fold; `off` leaves the mouse to the terminal |
+| `header` | The header's parts, in order: any of `logo` `health` `host` `os` `kernel` `date` `time` (default `logo health host os date time`) |
 | `<provider>.refresh` | Seconds between calls to that provider, e.g. `claude.refresh = 600` (default 300 for Claude, 60 for the others; never below 60) |
 
 | Environment variable | Effect |

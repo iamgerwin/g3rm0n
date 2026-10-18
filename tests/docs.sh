@@ -99,6 +99,13 @@ for key in "${!CFG[@]}"; do
   check "config key '$key' missing from the README configuration table" grep -qF -- "| \`$key\`" README.md
 done
 
+# ---- the README's sample screens are what the code draws -------------------------------
+for screen in full folded; do   # (not "mode": that's this script's own option)
+  shown=$(awk -v m="<!-- sample:$screen -->" '$0 == m { on = 1; next } on && /^<!-- \/sample -->/ { exit } on && !/^```/' README.md)
+  check "README sample '$screen' differs from scripts/readme-sample.sh $screen (run scripts/readme-sample.sh --update)" \
+    test "$shown" = "$(scripts/readme-sample.sh "$screen")"
+done
+
 # ---- architecture: every module is documented ---------------------------------------
 for m in lib/*.sh lib/platform/*.sh; do
   check "$m missing from ARCHITECTURE.md" in_file ARCHITECTURE.md "$m"
@@ -115,6 +122,23 @@ for t in tests/*.sh; do
 done
 check "AGENTS.md must point to rules/" in_file AGENTS.md "rules/"
 check "AGENTS.md must point to ARCHITECTURE.md" in_file AGENTS.md "ARCHITECTURE.md"
+check "AGENTS.md must point to learnings/dump.md" in_file AGENTS.md "learnings/dump.md"
+check "CLAUDE.md must import learnings/dump.md" in_file CLAUDE.md "@learnings/dump.md"
+check "rules/08-documentation.md must list learnings/dump.md" in_file rules/08-documentation.md "learnings/dump.md"
+# every learnings entry: "## YYYY-MM-DD · area · title" and its four fields
+check "learnings/dump.md has entries" bash -c "grep -qE '^## [0-9]{4}-[0-9]{2}-[0-9]{2} · ' learnings/dump.md"
+while IFS= read -r h; do
+  body=$(awk -v h="$h" '$0 == h { on = 1; next } /^## / { on = 0 } on' learnings/dump.md)
+  for f in "What happened" "Cause" "Lesson" "Enforced by"; do
+    check "learnings entry '${h#\#\# }' has no **$f:**" grep -qF -- "- **$f:**" <<<"$body"
+  done
+done < <(grep -E '^## [0-9]{4}-[0-9]{2}-[0-9]{2} · ' learnings/dump.md)
+# (the format example sits in a fenced block at the top, so fences are skipped)
+learnings_headings_ok() {
+  ! awk '/^```/ { f = !f; next } !f && /^## /' learnings/dump.md \
+    | grep -vE '^## [0-9]{4}-[0-9]{2}-[0-9]{2} · [^·]+ · .+$'
+}
+check "learnings headings must be '## YYYY-MM-DD · area · title'" learnings_headings_ok
 check "CLAUDE.md must import AGENTS.md" in_file CLAUDE.md "@AGENTS.md"
 check "AGENTS.md must name the docs check" in_file AGENTS.md "tests/docs.sh"
 check ".githooks/pre-commit must run the docs check" in_file .githooks/pre-commit "tests/docs.sh"

@@ -31,11 +31,10 @@ dash_sample() {
 }
 
 dash_render() { # live cols -> OUT
-  local live=$1 cols=$2 hw room
+  local live=$1 cols=$2
   OUT=()
-  hw="$S_HOST · $S_OS · $S_KERNEL"
-  room=$(( cols - 30 )); (( room < 0 )) && room=0
-  OUT+=("${c_bold}${c_magenta}g3rm0n${c_off}  $H_DOT ${c_bold}$H_SCORE${c_off} $H_LABEL  ${c_dim}${hw:0:room}${c_off}")
+  hdr_render "$cols" "${CFG[header]:-}"
+  OUT+=("$HDR_LINE")
   OUT+=("")
   panel_compose "$live" "$cols"
 }

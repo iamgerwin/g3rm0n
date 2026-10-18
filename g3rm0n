@@ -56,7 +56,7 @@ if [[ ! -r $G3_HOME/lib/platform/$G3_PLATFORM.sh ]]; then
   echo "g3rm0n: this installation has no $G3_PLATFORM support; reinstall it on this machine" >&2
   exit 1
 fi
-for _m in core ui panel fold input keymap "platform/$G3_PLATFORM" system ai dashboard setup; do
+for _m in core ui panel fold input keymap header "platform/$G3_PLATFORM" system ai dashboard setup; do
   # shellcheck source=/dev/null
   source "$G3_HOME/lib/$_m.sh"
 done

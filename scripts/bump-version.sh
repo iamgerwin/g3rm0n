@@ -56,5 +56,6 @@ awk -v new="$new" -v date="$date" -v url="$url" -v old="$old" '
   { print }' CHANGELOG.md >CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
 for f in README.md install.sh; do sedi -E "s/--version [0-9]+\.[0-9]+\.[0-9]+/--version $new/g" "$f"; done
 
+scripts/readme-sample.sh --update   # the sample screen's footer shows the version
 printf 'Bumped %s -> %s (%s)\n' "$old" "$new" "$date"
 tests/docs.sh

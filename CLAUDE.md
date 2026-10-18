@@ -2,6 +2,10 @@
 
 @AGENTS.md
 
+## Past mistakes (read before changing anything)
+
+@learnings/dump.md
+
 ## Hooks in this project
 
 - `.claude/settings.json` registers a **Stop** hook, `.claude/hooks/docs-drift.sh`. It

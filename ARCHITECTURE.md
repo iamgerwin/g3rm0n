@@ -10,7 +10,7 @@ talks to the others through a few documented globals and function contracts.
 ## Modules
 
 ```
-g3rm0n ──► lib/core.sh ──► lib/ui.sh ──► lib/panel.sh ──► lib/fold.sh ──► lib/input.sh ──► lib/keymap.sh
+g3rm0n ──► lib/core.sh ──► lib/ui.sh ──► lib/panel.sh ──► lib/fold.sh ──► lib/input.sh ──► lib/keymap.sh ──► lib/header.sh
 (load order) ──► lib/platform/<os>.sh ──► lib/system.sh ──► lib/ai.sh ──► lib/dashboard.sh ──► lib/setup.sh
 ```
 
@@ -23,6 +23,7 @@ g3rm0n ──► lib/core.sh ──► lib/ui.sh ──► lib/panel.sh ──�
 | `lib/fold.sh` | Fold state (model) | `FOLD` map, toggles and groups, `--fold` lists, persistence in `$G3_STATE_DIR/folded` |
 | `lib/input.sh` | Input adapter | Raw terminal bytes in, normalized events out (`key`, `click`, `wheel`, `none`); mouse on/off |
 | `lib/keymap.sh` | Key bindings (data) | `KEYMAP` (key → action) and `KEYMAP_HELP` (what help and the README show) |
+| `lib/header.sh` | Header components | `HDR_FN` (id → component), `hdr_render` (order, separators, dropping what doesn't fit) |
 | `lib/platform/linux.sh` | Linux backend | The platform contract, from `/proc`, `/sys`, `df`, `ps`, `ip` |
 | `lib/platform/darwin.sh` | macOS backend | The platform contract, from `sysctl`, `vm_stat`, `iostat`, `netstat`, `ioreg`, `pmset`, `df`, `ps`, `route` |
 | `lib/system.sh` | System model and renderers | Rates from the backend's counters, the health score, the six system panel renderers, `SYS_CONTRACT` |
@@ -67,6 +68,14 @@ for either again.
 **State as data.** Fold state is a map of panel ids, saved as one line of ids and
 parsed with a whitelist (never sourced). The config is parsed the same way. Neither
 holds anything but layout and preferences.
+
+**Components (header).** The header is a list of component ids rendered in order
+(`hdr_render`). Each component (`logo`, `health`, `host`, `os`, `kernel`, `date`, `time`)
+is one function that sets `HDR_TEXT` from data the samplers already hold. Separators
+come from the pair of neighbours (`HDR_LEAD`, `HDR_JOIN`), so components never format
+their surroundings, and `HDR_DROP` says what gives way first when the line is too wide.
+The order comes from `header` in the config (default `G3_HEADER`), so letting users
+arrange it later only needs a UI that writes that list.
 
 **Strategy (platforms).** Everything that depends on the operating system sits behind
 the platform contract below. `g3rm0n` loads exactly one backend

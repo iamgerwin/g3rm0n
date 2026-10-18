@@ -35,7 +35,7 @@ echo "g3rm0n interaction tests"
 
 # ---- 1. unit checks ---------------------------------------------------------------
 # shellcheck source=/dev/null
-for m in core ui panel fold input keymap dashboard; do source "$root/lib/$m.sh"; done
+for m in core ui panel fold input keymap header dashboard; do source "$root/lib/$m.sh"; done
 g3_colors
 
 ev() { in_decode "$1"; printf '%s' "$IN_EVENT"; }
@@ -122,6 +122,27 @@ check "grid: one column below 94 cols"  is "$(panel_at 3 3)" "memory"
 check "grid: next panel follows the fold" is "${OUT[2]}" "$(ui_title "◫" Memory ▾ "" 2)"
 fold_set cpu 0; OUT=(); panel_compose 0 100
 check "grid: one-shot output has no markers" lacks "${OUT[*]}" "▾"
+
+# header: components in order, their separators, and what gives way when it's narrow
+when=1791462840   # 2026-10-08 12:34:00 UTC
+S_HOST=ger-01 S_OS="Ubuntu 26.04.1 LTS" S_KERNEL=7.0.0-38-generic H_DOT="●" H_SCORE=100 H_LABEL=Healthy
+hdr() { TZ=UTC hdr_render "$@"; printf '%s' "$HDR_LINE"; }
+hdr_tz() { TZ=$1 hdr_render 200 time "$when"; printf '%s' "$HDR_LINE"; }
+check "header: default layout"            is "$(hdr 200 "" $when)" "g3rm0n  ● 100 Healthy  ger-01 · Ubuntu 26.04.1 LTS · Oct 08 | 12:34PM UTC"
+check "header: the default is G3_HEADER"  is "$(hdr 200 "$G3_HEADER" $when)" "$(hdr 200 "" $when)"
+check "header: components can be rearranged" is "$(hdr 200 "logo health time date os" $when)" "g3rm0n  ● 100 Healthy  12:34PM UTC | Oct 08 · Ubuntu 26.04.1 LTS"
+check "header: the kernel is still a component" is "$(hdr 200 "logo os kernel" $when)" "g3rm0n  Ubuntu 26.04.1 LTS · 7.0.0-38-generic"
+check "header: commas work too"           is "$(hdr 200 "logo,time" $when)" "g3rm0n  12:34PM UTC"
+check "header: unknown components skipped" is "$(hdr 200 "logo nonsense time" $when)" "g3rm0n  12:34PM UTC"
+check "header: nothing valid means the default" is "$(hdr 200 "nonsense" $when)" "$(hdr 200 "" $when)"
+check "header: narrow drops the OS first" is "$(hdr 60 "" $when)" "g3rm0n  ● 100 Healthy  ger-01 · Oct 08 | 12:34PM UTC"
+check "header: then host and date; time stays" is "$(hdr 40 "" $when)" "g3rm0n  ● 100 Healthy  12:34PM UTC"
+for w in 200 100 80 72 60 50 40; do
+  check "header: fits in $w columns"      bash -c "(( \${#1} <= $w ))" _ "$(hdr $w "" $when)"
+done
+check "header: the time zone is the system's" is "$(hdr_tz Asia/Tokyo)" "09:34PM JST"
+no_date_proc() { ! grep -vE '^[[:space:]]*#' "$root/lib/header.sh" | grep -qE '[$][(]date|`date'; }
+check "header: no date process per frame" no_date_proc
 
 # dispatch: only "quit" ends the dashboard; a click that hits no title does nothing
 fold_set cpu 0; OUT=(); panel_compose 1 100
