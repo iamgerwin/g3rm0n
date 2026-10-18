@@ -57,6 +57,8 @@ Split  topped up ¥100.00 · granted ¥10.00       Key    no spend cap
   and when each one resets.
 - **AI Credits:** how much prepaid balance is left and what you've spent per day, week and month.
 - **Your choice of panels.** `g3rm0n setup` picks sections, providers and the refresh rate.
+- **Fold what you don't need.** Click a panel's title, or press its section's digit,
+  to fold it into a one-line summary. g3rm0n remembers your folds.
 - **Safe with credentials.** Keys are referenced where they already live on your
   machine. They're never copied, stored or shown.
 - **Smooth.** It redraws flicker-free on the alternate screen, AI calls run in the
@@ -112,7 +114,7 @@ key, are written in the syntax of the shell you started it from.
 ## Usage
 
 ```
-g3rm0n                    live dashboard (q quits, any key refreshes)
+g3rm0n                    live dashboard (digits or clicks fold panels, q quits)
 g3rm0n --once             print one snapshot and exit
 g3rm0n -i 5               refresh every 5 seconds
 g3rm0n -s cpu,memory      show only some sections for this run
@@ -127,10 +129,55 @@ g3rm0n help               all options
 | `-1`, `--once` | Print one snapshot and exit. This is automatic when output isn't a terminal |
 | `-i N`, `--interval N` | Seconds between refreshes (whole number, 1 or more). Overrides the config for this run |
 | `-s LIST`, `--sections LIST` | Comma-separated sections for this run, e.g. `cpu,memory,ai-tokens` |
+| `-f LIST`, `--fold LIST` | Start with these folded: section names (`memory,ai-tokens`), panel ids (`ai-codex`), `all` or `none` |
+| `--no-mouse` | Don't capture the mouse, so the terminal's own text selection works as usual |
 | `--no-ai` | Hide the AI panels and make no network calls |
 | `--no-color` | Plain output without color (`NO_COLOR` works too) |
 
 Sections: `cpu` `memory` `disk` `power` `processes` `network` `ai-tokens` `ai-credits`.
+
+## Folding and keys
+
+Every panel folds, like an accordion, into a single title line that keeps the number
+you most need:
+
+```
+▾ ◉ CPU ──────────────────────────────────── 1  ▸ ◫ Memory · 44% · 13.9G/31.2G ───────────── 2
+Usage  ████░░░░░░░░░░░░   24%
+Cores  ▂▁▃▁▅▂▁▁▂▇▁▂▁▁▃▁
+Load   1.12 · 0.98 · 0.87 · 16 threads
+Model  AMD Ryzen 7 7840U w/ Radeon 780M
+
+▾ ▤ Disk ─────────────────────────────────── 3  ▸ ◪ Power · batt 81% · 54°C ──────────────── 4
+/      ███████░░░   68% 312.4G/467.3G ext4
+I/O    read 1.2M/s · write 340.0K/s
+
+▸ ≡ Processes · 412 tasks · firefox 18% ──── 5  ▸ ⇅ Network · ↓ 2.4M/s · ↑ 96.0K/s ───────── 6
+```
+
+`▾` marks an open panel and `▸` a folded one. The digit at the end of each title is
+that section's shortcut.
+
+| Key | What it does |
+|-----|--------------|
+| `1-8` | Fold or unfold a section: `1` CPU, `2` Memory, `3` Disk, `4` Power, `5` Processes, `6` Network, `7` AI Tokens, `8` AI Credits |
+| `click` | Fold or unfold one panel. Click its title; this works per AI provider too |
+| `- / +` | Fold everything / unfold everything |
+| `r, space` | Refresh now |
+| `q` | Quit (Ctrl-C works too) |
+
+Folds are remembered between runs in `~/.local/state/g3rm0n/folded`. `--fold` sets
+the starting folds for one run, and `--fold none` clears them. One-shot output
+(`--once`, or when piped) ignores saved folds, so scripts always get the full
+picture, unless you pass `--fold`.
+
+**Mouse clicks** use the standard xterm mouse protocol (SGR, mode 1006), so they
+work in the terminals people use on Linux, macOS and Windows: Windows Terminal (WSL
+or SSH), iTerm2, Terminal.app, GNOME Terminal, Konsole, kitty, Alacritty, WezTerm,
+VS Code's terminal and xterm. Inside **tmux**, turn on `set -g mouse on`. When
+g3rm0n has the mouse, hold **Shift** (on macOS, **Option** in iTerm2 and Terminal.app)
+while dragging to select text, or start it with `--no-mouse`, or set `mouse = off`.
+Keyboard shortcuts work everywhere.
 
 ## Setup
 
@@ -186,13 +233,16 @@ dashboard keeps working.
   and status codes, never responses or tokens.
 - **Calls are gentle.** Each provider is called at most once a minute, with a longer
   back-off after a rate limit.
+- **Only layout is remembered.** `~/.local/state/g3rm0n/folded` lists which panels
+  are folded. Nothing else is written outside the cache.
 - **No telemetry**, no update checks, no background service.
 - **`--no-ai`** guarantees zero network traffic.
 
 ## Configuration
 
 `g3rm0n setup` writes `~/.config/g3rm0n/config`. It's plain `key = value` text that
-you can edit by hand. g3rm0n parses it and never executes it.
+you can edit by hand. g3rm0n parses it and never executes it, and `setup` keeps any
+keys it doesn't manage (such as `mouse`) exactly as you wrote them.
 
 ```ini
 sections = cpu memory disk power processes network ai-tokens ai-credits
@@ -210,11 +260,12 @@ openrouter.credentials = env:OPENROUTER_API_KEY
 | `interval` | Seconds between refreshes (whole number, 1 or more) |
 | `providers` | AI providers to show: `auto` (every one detected), a list, or `none` |
 | `<provider>.credentials` | Where that provider's credential lives: `file:<path>` or `env:<VARIABLE>` |
+| `mouse` | `on` (default) lets you click titles to fold; `off` leaves the mouse to the terminal |
 
 | Environment variable | Effect |
 |----------------------|--------|
 | `NO_COLOR` | Disables color |
-| `XDG_CONFIG_HOME`, `XDG_CACHE_HOME` | Move the config and cache folders |
+| `XDG_CONFIG_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME` | Move the config, cache and fold-state folders |
 | `G3RM0N_INSTALL_DIR`, `G3RM0N_BIN_DIR` | Change where `install.sh` puts files |
 
 ## Troubleshooting
@@ -230,6 +281,8 @@ openrouter.credentials = env:OPENROUTER_API_KEY
 | Key is set but shows *not found* | It isn't exported. Use `export` (bash/zsh), `set -gx` (fish) or `setenv` (tcsh) |
 | `g3rm0n: command not found` | `~/.local/bin` isn't on your `PATH`; the installer printed the line to add for your shell |
 | Boxes or misaligned bars | Use a UTF-8 locale and a font with box-drawing glyphs |
+| Can't select text with the mouse | Hold Shift (Option on macOS) while dragging, or use `--no-mouse` / `mouse = off` |
+| Clicking a title does nothing | Your terminal isn't sending mouse events (in tmux: `set -g mouse on`). Use the digit keys instead |
 
 ## Uninstall
 
@@ -237,14 +290,16 @@ openrouter.credentials = env:OPENROUTER_API_KEY
 curl -fsSL https://raw.githubusercontent.com/iamgerwin/g3rm0n/main/install.sh | bash -s -- --uninstall
 ```
 
-This keeps your config in `~/.config/g3rm0n`; delete that folder too for a clean slate.
+This keeps your config in `~/.config/g3rm0n` and your folds in
+`~/.local/state/g3rm0n`; delete those folders too for a clean slate.
 
 ## Contributing
 
 Contributions are welcome. Please read the rules in [`rules/`](rules/README.md) first.
 They cover scope, code style, security, UI conventions, how to add a provider,
 testing, releases and documentation. They apply equally to people and to coding
-agents ([AGENTS.md](AGENTS.md)). See also [CONTRIBUTING.md](CONTRIBUTING.md).
+agents ([AGENTS.md](AGENTS.md)). [ARCHITECTURE.md](ARCHITECTURE.md) explains how the
+code fits together. See also [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Docs are kept in step with the code by a deterministic drift check, `tests/docs.sh`.
 It runs from a git pre-commit hook (`git config core.hooksPath .githooks`), from the

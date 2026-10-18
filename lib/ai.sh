@@ -234,20 +234,29 @@ ai_window_row() { # pct window reset_epoch
   printf '%s%s %s %s' "$(ui_label "$(ai_win_label "$2")")" "$(ui_bar "$1" 10)" "$(ui_pct "$1")" "${c_dim}· ${note}${c_off}"
 }
 
-ai_panel() { # id array-name -> one panel in the standard layout for its kind
-  local id=$1 kind=${AI_KIND[$1]} status="" icon="✦" group="AI Tokens" what="Login" bad="expired"
-  local -n _p=$2
-  [[ $kind == credits ]] && { icon="◆"; group="AI Credits"; what="Key"; bad="rejected"; }
-  _p=("$(ui_title "$icon" "$group · ${AI_NAME[$id]}")")
+ai_title() { # id -> "AI Tokens · Claude" / "AI Credits · OpenRouter"
+  if [[ ${AI_KIND[$1]} == credits ]]; then printf 'AI Credits · %s' "${AI_NAME[$1]}"
+  else printf 'AI Tokens · %s' "${AI_NAME[$1]}"; fi
+}
+ai_icon() { if [[ ${AI_KIND[$1]} == credits ]]; then printf '◆'; else printf '✦'; fi; }
+
+ai_panel() { # id -> PANEL_BODY + PANEL_SUM in the standard layout for its kind (panel.sh renderer)
+  local id=$1 kind=${AI_KIND[$1]} status="" what="Login" bad="expired"
+  [[ $kind == credits ]] && { what="Key"; bad="rejected"; }
+  PANEL_BODY=() PANEL_SUM=""
   [[ -r $AI_DIR/$id.status ]] && read -r status <"$AI_DIR/$id.status"
   case $status in
-    401|403) _p+=("$(ui_label "$what")${c_yellow}${bad}${c_off} ${c_dim}· $("ai_hint_$id")${c_off}") ;;
-    nologin) _p+=("$(ui_label "$what")${c_dim}missing · $("ai_hint_$id")${c_off}") ;;
-    000)     _p+=("$(ui_label Status)${c_dim}offline · retrying${c_off}") ;;
-    429)     _p+=("$(ui_label Status)${c_yellow}rate limited${c_off} ${c_dim}· retrying in $(( AI_TTL * 5 / 60 ))m${c_off}") ;;
+    401|403) PANEL_BODY+=("$(ui_label "$what")${c_yellow}${bad}${c_off} ${c_dim}· $("ai_hint_$id")${c_off}")
+             PANEL_SUM="${c_yellow}${what,,} ${bad}${c_off}" ;;
+    nologin) PANEL_BODY+=("$(ui_label "$what")${c_dim}missing · $("ai_hint_$id")${c_off}")
+             PANEL_SUM="${what,,} missing" ;;
+    000)     PANEL_BODY+=("$(ui_label Status)${c_dim}offline · retrying${c_off}")
+             PANEL_SUM="offline" ;;
+    429)     PANEL_BODY+=("$(ui_label Status)${c_yellow}rate limited${c_off} ${c_dim}· retrying in $(( AI_TTL * 5 / 60 ))m${c_off}")
+             PANEL_SUM="${c_yellow}rate limited${c_off}" ;;
   esac
   if [[ ! -r $AI_DIR/$id.row ]]; then
-    [[ $status == @(401|403|nologin|000|429) ]] || _p+=("${c_dim}fetching usage…${c_off}")
+    [[ $status == @(401|403|nologin|000|429) ]] || { PANEL_BODY+=("${c_dim}fetching usage…${c_off}"); PANEL_SUM="fetching…"; }
     return
   fi
   local age stale=""
@@ -256,28 +265,31 @@ ai_panel() { # id array-name -> one panel in the standard layout for its kind
   "ai_body_$kind" "$id"
 }
 
-ai_body_tokens() { # appends to _p: both windows, then headroom in the short one
+ai_body_tokens() { # appends to PANEL_BODY: both windows, then headroom in the short one
   local plan p1 w1 r1 p2 w2 r2 left
   IFS=$'\t' read -r plan p1 w1 r1 p2 w2 r2 <"$AI_DIR/$1.row"
-  _p+=("$(ai_window_row "$p1" "$w1" "$r1")")
-  _p+=("$(ai_window_row "$p2" "$w2" "$r2")")
+  PANEL_BODY+=("$(ai_window_row "$p1" "$w1" "$r1")")
+  PANEL_BODY+=("$(ai_window_row "$p2" "$w2" "$r2")")
   left=$(( 100 - ${p1%.*} )); (( left < 0 )) && left=0
-  _p+=("$(ui_label Left)${c_bold}${left}%${c_off} of $(ai_win_label "$w1") window ${stale:-${c_dim}· ${plan} plan${c_off}}")
+  PANEL_BODY+=("$(ui_label Left)${c_bold}${left}%${c_off} of $(ai_win_label "$w1") window ${stale:-${c_dim}· ${plan} plan${c_off}}")
+  local l2; l2=$(ai_win_label "$w2"); [[ $l2 == Week ]] && l2=wk
+  [[ -n $PANEL_SUM ]] || PANEL_SUM="$(ai_win_label "$w1") $(ui_tone "${p1%.*}")${p1%.*}%${c_off} · ${l2,,} ${p2%.*}%"
 }
 
-ai_body_credits() { # appends to _p: balance, spend, provider detail
+ai_body_credits() { # appends to PANEL_BODY: balance, spend, provider detail
   local cur left total day week month label detail pct
   IFS=$'\t' read -r cur left total day week month label detail <"$AI_DIR/$1.row"
   if [[ $total != - && $left != - ]] && awk -v t="$total" 'BEGIN { exit !(t > 0) }'; then
     pct=$(awk -v l="$left" -v t="$total" 'BEGIN { p = (t - l) * 100 / t; if (p < 0) p = 0; printf "%d", p }')
-    _p+=("$(ui_label Spent)$(ui_bar "$pct" 10) $(ui_pct "$pct") ${c_dim}·${c_off} ${c_bold}$(ai_money "$cur" "$left")${c_off}${c_dim} left of $(ai_money "$cur" "$total")${c_off}${stale:+ $stale}")
+    PANEL_BODY+=("$(ui_label Spent)$(ui_bar "$pct" 10) $(ui_pct "$pct") ${c_dim}·${c_off} ${c_bold}$(ai_money "$cur" "$left")${c_off}${c_dim} left of $(ai_money "$cur" "$total")${c_off}${stale:+ $stale}")
   else
-    _p+=("$(ui_label Left)${c_bold}$(ai_money "$cur" "$left")${c_off} ${stale:-${c_dim}· prepaid balance${c_off}}")
+    PANEL_BODY+=("$(ui_label Left)${c_bold}$(ai_money "$cur" "$left")${c_off} ${stale:-${c_dim}· prepaid balance${c_off}}")
   fi
   if [[ $day == - && $week == - && $month == - ]]; then
-    _p+=("$(ui_label Usage)${c_dim}not reported by this API${c_off}")
+    PANEL_BODY+=("$(ui_label Usage)${c_dim}not reported by this API${c_off}")
   else
-    _p+=("$(ui_label Usage)$(ai_money "$cur" "$day") ${c_dim}day ·${c_off} $(ai_money "$cur" "$week") ${c_dim}wk ·${c_off} $(ai_money "$cur" "$month") ${c_dim}mo${c_off}")
+    PANEL_BODY+=("$(ui_label Usage)$(ai_money "$cur" "$day") ${c_dim}day ·${c_off} $(ai_money "$cur" "$week") ${c_dim}wk ·${c_off} $(ai_money "$cur" "$month") ${c_dim}mo${c_off}")
   fi
-  _p+=("$(ui_label "$label")${c_dim}${detail}${c_off}")
+  PANEL_BODY+=("$(ui_label "$label")${c_dim}${detail}${c_off}")
+  [[ -n $PANEL_SUM ]] || PANEL_SUM="$(ai_money "$cur" "$left") left"
 }

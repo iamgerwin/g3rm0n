@@ -5,6 +5,7 @@ G3_VERSION="0.1.1"
 G3_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/g3rm0n"
 G3_CONFIG_FILE="$G3_CONFIG_DIR/config"
 G3_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/g3rm0n"
+G3_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/g3rm0n"
 
 G3_SECTIONS=(cpu memory disk power processes network ai-tokens ai-credits)
 G3_PROVIDERS=(claude codex zai deepseek openrouter)
@@ -96,7 +97,7 @@ g3_expand() { # "~/x" -> "$HOME/x"
 declare -gA CFG=()
 
 g3_config_load() {
-  CFG=([sections]="${G3_SECTIONS[*]}" [interval]=2 [providers]=auto)
+  CFG=([sections]="${G3_SECTIONS[*]}" [interval]=2 [providers]=auto [mouse]=on)
   [[ -r $G3_CONFIG_FILE ]] || return 0
   local line re='^[[:space:]]*([a-z][a-z0-9_.-]*)[[:space:]]*=[[:space:]]*(.*)$'
   while IFS= read -r line || [[ -n $line ]]; do
