@@ -43,7 +43,8 @@ done
 (( BASH_VERSINFO[0] >= 5 )) || fail "bash 5 or newer is required"
 
 src=""
-here=$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" 2>/dev/null && pwd || true)
+here=""
+if cd_out=$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" 2>/dev/null && pwd); then here=$cd_out; fi
 if [[ -z $version && -f $here/g3rm0n && -f $here/lib/core.sh ]]; then
   src=$here
   say "Linking checkout $src"

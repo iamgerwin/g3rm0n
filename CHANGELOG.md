@@ -6,6 +6,10 @@ All notable changes to g3rm0n are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Installer: checkout detection rewritten so older ShellCheck releases lint it cleanly (no behavior change).
+
 ## [0.1.0] - 2026-10-18
 
 First release.
