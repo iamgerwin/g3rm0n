@@ -59,6 +59,11 @@ event that resolves to nothing (a click beside the titles, an empty section) can
 end the dashboard; `dash_event` always returns 0. A new shortcut is one table entry plus a `KEYMAP_HELP` line; the docs
 check makes sure the README lists it. Unbound keys refresh, as they always have.
 
+**Environment, once.** `g3rm0n` fixes the locale at start-up (UTF-8 character set,
+`LC_NUMERIC=C`) and `ui_term_size` measures the terminal with `stty size` on
+`/dev/tty`. Both behave the same on every platform; modules never ask the system
+for either again.
+
 **State as data.** Fold state is a map of panel ids, saved as one line of ids and
 parsed with a whitelist (never sourced). The config is parsed the same way. Neither
 holds anything but layout and preferences.
@@ -84,7 +89,7 @@ into rates, panels and the health score, so features can't differ between platfo
 | `plat_disk_bytes` | `DIO_R` `DIO_W` (cumulative bytes) | `/proc/diskstats` | `ioreg` block storage statistics |
 | `plat_temp` | prints °C, or nothing | thermal zones, hwmon | nothing (root only) |
 | `plat_uptime` | `S_UP` (seconds) | `/proc/uptime` | `sysctl kern.boottime` |
-| `plat_root_pct` | `S_ROOT_P` (for the health score) | `df /` | `df` of the data volume |
+| `plat_root_pct` | `S_ROOT_P` `S_ROOT_LABEL` (health score, folded Disk title) | `df /`, labelled `/` | `df` of the data volume, labelled `~` |
 | `plat_disks` | prints `mount fstype size used pct` rows | `df -B1 --output` | `df -kP`, `mount` |
 | `plat_battery` | `BAT_CAP` `BAT_STATUS` `BAT_AC` | `/sys/class/power_supply` | `pmset -g batt` |
 | `plat_gpu` | `GPU_UTIL` [`GPU_MEM_U` `GPU_MEM_T` `GPU_TEMP`] | `nvidia-smi`, AMD sysfs | `ioreg` IOAccelerator |
@@ -92,6 +97,8 @@ into rates, panels and the health score, so features can't differ between platfo
 | `plat_link` | `LINK_DEV` `LINK_ADDR` | `ip route get` | `route get default`, `ipconfig` |
 | `plat_vpn` | `VPN_DEV` `VPN_ADDR` | wg/tun/tailscale/ppp interfaces | tunnels with an IPv4 address (`ifconfig`) |
 | `plat_mtime` | prints a file's modification time | `stat -c %Y` | `stat -f %m` |
+| `plat_keychain_has` | true when the OS credential store has an item (attributes only, no secret) | always false (logins are files) | `security find-generic-password -s` |
+| `plat_keychain_read` | prints an item's secret, only when its provider is called | nothing | `security find-generic-password -s … -w` |
 | `plat_cleanup` | stops background work, removes its files | nothing to do | stops the CPU measurement |
 
 Rules for backends:

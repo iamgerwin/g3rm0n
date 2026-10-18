@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# macOS `security` for the Keychain lookups the backend makes. Synthetic login only.
+# G3_MOCK_KEYCHAIN=empty simulates a Mac where Claude Code was never signed in.
+[[ $1 == find-generic-password ]] || exit 1
+svc="" want_secret=0
+shift
+while (( $# )); do case $1 in -s) svc=$2; shift ;; -w) want_secret=1 ;; esac; shift; done
+if [[ $svc != "Claude Code-credentials" || ${G3_MOCK_KEYCHAIN:-} == empty ]]; then
+  echo "security: SecKeychainSearchCopyNext: The specified item could not be found in the keychain." >&2
+  exit 44
+fi
+if (( want_secret )); then
+  echo '{"claudeAiOauth":{"accessToken":"test","subscriptionType":"max","rateLimitTier":"default_claude_max_5x"}}'
+else
+  printf 'keychain: "/Users/test/Library/Keychains/login.keychain-db"\nclass: "genp"\nattributes:\n    "svce"<blob>="Claude Code-credentials"\n'
+fi

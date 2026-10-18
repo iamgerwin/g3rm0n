@@ -1,0 +1,5 @@
+#!/bin/sh
+# tput as macOS ships it (ncurses 5.7): it asks stdout only, so inside $(...) it can't
+# see the terminal and answers terminfo's 80x24. Used to prove g3rm0n doesn't rely on it.
+if [ -t 1 ]; then exec /usr/bin/tput "$@"; fi
+case $1 in cols) echo 80 ;; lines) echo 24 ;; *) exec /usr/bin/tput "$@" ;; esac

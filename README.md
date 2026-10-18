@@ -88,7 +88,8 @@ can get, instead of asking for `sudo`:
 | `Temp` row | hottest sensor | `no sensors exposed` (sensors need root via `powermetrics`) |
 | `GPU` row | NVIDIA or AMD usage, memory, temperature | Apple GPU usage |
 | `Used` memory | total minus available | app memory + wired + compressed, as Activity Monitor counts it |
-| Disk `~` row | your home partition, when it's separate | the data volume, where your files live |
+| Disk `~` row | your home partition, when it's separate | the data volume, where your files live (also what the folded Disk title and the health score watch) |
+| Claude login | `~/.claude/.credentials.json` | the macOS Keychain, where Claude Code keeps it |
 
 ## Requirements
 
@@ -248,7 +249,7 @@ Without a config, g3rm0n shows every section and every provider it can find.
 
 | Panel | Provider | Shows | Credential g3rm0n references |
 |-------|----------|-------|------------------------------|
-| ✦ AI Tokens | Claude | 5-hour and weekly limit, plan | Claude Code login: `~/.claude/.credentials.json` (or `$CLAUDE_CONFIG_DIR`) |
+| ✦ AI Tokens | Claude | 5-hour and weekly limit, plan | Claude Code login: `~/.claude/.credentials.json` (or `$CLAUDE_CONFIG_DIR`); on macOS, the `Claude Code-credentials` Keychain item |
 | ✦ AI Tokens | Codex | 5-hour and weekly limit, plan | Codex CLI login: `~/.codex/auth.json` (or `$CODEX_HOME`) |
 | ✦ AI Tokens | Z.ai | 5-hour limit, plus the weekly limit or the monthly tool quota | `GLM_API_KEY`, `ZAI_API_KEY` or `Z_AI_API_KEY` |
 | ◆ AI Credits | DeepSeek | Balance and topped-up/granted split | `DEEPSEEK_API_KEY` |
@@ -266,8 +267,12 @@ dashboard keeps working.
 
 ## Privacy & security
 
-- **Nothing is stored.** The config holds references such as `env:GLM_API_KEY` or
-  `file:~/.codex/auth.json`, never key values.
+- **Nothing is stored.** The config holds references such as `env:GLM_API_KEY`,
+  `file:~/.codex/auth.json` or `keychain:Claude Code-credentials`, never key values.
+- **The macOS Keychain is asked, not copied.** Finding Claude Code's login reads the
+  item's name only. Its token is read when the Claude panel refreshes, sent only to
+  Anthropic, and never written anywhere. macOS may ask once whether `security` may
+  use it; choose **Always Allow** to avoid being asked at every refresh.
 - **Keys go to their own provider only.** Each credential is read when it's needed and
   sent only to that provider's API, over HTTPS.
 - **Keys don't show up in `ps`.** Auth headers are passed to curl on stdin, not as
@@ -303,7 +308,7 @@ openrouter.credentials = env:OPENROUTER_API_KEY
 | `sections` | Panels to show (space-separated) |
 | `interval` | Seconds between refreshes (whole number, 1 or more) |
 | `providers` | AI providers to show: `auto` (every one detected), a list, or `none` |
-| `<provider>.credentials` | Where that provider's credential lives: `file:<path>` or `env:<VARIABLE>` |
+| `<provider>.credentials` | Where that provider's credential lives: `file:<path>`, `env:<VARIABLE>` or (macOS) `keychain:<service>` |
 | `mouse` | `on` (default) lets you click titles to fold; `off` leaves the mouse to the terminal |
 
 | Environment variable | Effect |
@@ -317,6 +322,8 @@ openrouter.credentials = env:OPENROUTER_API_KEY
 | You see | What to do |
 |---------|------------|
 | `Login expired · run claude to sign in again` | Open that CLI once so it refreshes its own login |
+| macOS asks whether `security` may use "Claude Code-credentials" | That's g3rm0n reading Claude Code's login for the Claude panel. Choose **Always Allow**, or **Deny** to hide the panel |
+| Only one column, or the bottom cut off, in a big window | Fixed in 0.1.5: g3rm0n now asks the terminal for its size instead of `tput`, whose macOS version always reported 80×24 |
 | `Key rejected · check DEEPSEEK_API_KEY` | The key is wrong or revoked. Export a valid one |
 | `rate limited · retrying in 5m` | The provider is throttling. g3rm0n backs off by itself |
 | `stale 7m` | The last refresh failed; the numbers shown are from the last success |

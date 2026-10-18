@@ -100,7 +100,9 @@ plat_temp() { # -> hottest sensor in °C, empty when the machine exposes none
 
 plat_uptime() { local up _idle; read -r up _idle </proc/uptime; S_UP=${up%.*}; }
 
-plat_root_pct() { S_ROOT_P=$(df --output=pcent / 2>/dev/null | tail -n1 | tr -dc '0-9'); }
+plat_root_pct() { # -> S_ROOT_P and S_ROOT_LABEL: the volume the health score watches
+  S_ROOT_P=$(df --output=pcent / 2>/dev/null | tail -n1 | tr -dc '0-9') S_ROOT_LABEL=/
+}
 
 plat_disks() { # -> lines "mount<TAB>fstype<TAB>size<TAB>used<TAB>pct" for / and $HOME
   df -B1 --output=target,fstype,size,used,pcent / "$HOME" 2>/dev/null | tail -n +2 \
@@ -164,5 +166,10 @@ plat_vpn() { # -> VPN_DEV VPN_ADDR of the first VPN-style interface, empty when 
 }
 
 plat_mtime() { stat -c %Y "$1" 2>/dev/null; }   # file -> modification time (epoch)
+
+# The OS credential store. Linux CLIs (Claude Code included) keep logins in files,
+# so there is nothing to look up here.
+plat_keychain_has()  { return 1; }   # service -> true when an item exists
+plat_keychain_read() { return 1; }   # service -> the item's secret on stdout
 
 plat_cleanup() { :; }

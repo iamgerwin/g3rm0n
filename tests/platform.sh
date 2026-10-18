@@ -85,6 +85,58 @@ out=$(PATH="$root/tests/mock/darwin:$PATH" G3_PLATFORM=darwin "$root/g3rm0n" --o
 check "darwin: folded summaries"         contains "$out" "▸ ◫ Memory · 51% · 8.2G/16.0G"
 check "darwin: CPU measurement cleaned up" bash -c "! ls '$XDG_CACHE_HOME'/g3rm0n/cpu.* 2>/dev/null"
 
+# ---- 2b. macOS Keychain logins (Claude Code keeps its login there on a Mac) -------------
+k=$tmp/kc; mkdir -p "$k/home"
+kc() { PATH="$root/tests/mock/darwin:$root/tests/mock:$PATH" G3_PLATFORM=darwin HOME=$k/home \
+       XDG_CACHE_HOME=$k/cache XDG_CONFIG_HOME=$k/config "$@"; }
+out=$(kc "$root/g3rm0n" --once -s ai-tokens 2>&1)
+check "darwin keychain: Claude found in the Keychain"   contains "$out" "AI Tokens · Claude"
+check "darwin keychain: usage read with that login"     contains "$out" "max 5x plan"
+out=$(kc "$root/g3rm0n" setup --show 2>&1)
+check "darwin keychain: setup says where it was found"  contains "$out" "found · macOS Keychain"
+kc "$root/g3rm0n" setup --defaults >/dev/null 2>&1
+check "darwin keychain: config references, never stores" bash -c "grep -qx 'claude.credentials = keychain:Claude Code-credentials' '$k/config/g3rm0n/config' && ! grep -q accessToken '$k/config/g3rm0n/config' && ! grep -rq test '$k/cache/g3rm0n/ai'"
+rm -rf "$k/cache" "$k/config"
+out=$(G3_MOCK_KEYCHAIN=empty kc "$root/g3rm0n" --once -s ai-tokens 2>&1)
+check "darwin keychain: no panel without a login"       lacks "$out" "AI Tokens · Claude"
+mkdir -p "$k/home/.claude"; printf '%s' '{"claudeAiOauth":{"accessToken":"test","subscriptionType":"pro"}}' >"$k/home/.claude/.credentials.json"
+out=$(kc "$root/g3rm0n" setup --show 2>&1)
+check "darwin keychain: a login file still comes first" contains "$out" "found · ~/.claude/.credentials.json"
+
+# ---- 2c. parity: both backends, the same layout and the same features -----------------
+for b in darwin native; do
+  if [[ $b == darwin ]]; then
+    out=$(PATH="$root/tests/mock/darwin:$PATH" G3_PLATFORM=darwin COLUMNS=100 "$root/g3rm0n" --once --no-ai 2>&1)
+  else
+    out=$(COLUMNS=100 "$root/g3rm0n" --once --no-ai 2>&1); b=$native
+  fi
+  check "parity ($b): two columns at 100 columns" bash -c "grep -q '◉ CPU.*◫ Memory' <<<\"\$1\"" _ "$out"
+  check "parity ($b): all six system panels"      bash -c "for p in '◉ CPU' '◫ Memory' '▤ Disk' '◪ Power' '≡ Processes' '⇅ Network'; do grep -qF \"\$p\" <<<\"\$1\" || exit 1; done" _ "$out"
+  if [[ $b == darwin ]]; then
+    out=$(PATH="$root/tests/mock/darwin:$PATH" G3_PLATFORM=darwin "$root/g3rm0n" --once --no-ai --fold all 2>&1)
+  else
+    out=$("$root/g3rm0n" --once --no-ai --fold all 2>&1)
+  fi
+  check "parity ($b): every folded title has a summary" bash -c "(( \$(grep -oE '▸ [^ ]+ [A-Za-z]+ · ' <<<\"\$1\" | wc -l) == 6 ))" _ "$out"
+  label=$(grep -oE '▸ ▤ Disk · [^ ]+' <<<"$out"); label=${label##* }
+  check "parity ($b): the Disk summary names a volume it shows" test -n "$label"
+done
+
+# ---- 2d. numbers don't depend on the locale ----------------------------------------------
+loc=$(locale -a 2>/dev/null | grep -iE '^(de_DE|fr_FR|nl_NL|pt_BR)\.(utf-?8)$' | head -n1)
+if [[ -n $loc ]]; then
+  lc() { LC_ALL=$loc PATH="$root/tests/mock:$PATH" HOME=$k/home XDG_CACHE_HOME=$tmp/lc OPENROUTER_API_KEY=test "$@"; }
+  out=$(lc "$root/g3rm0n" --once -s ai-credits,network 2>&1)
+  check "locale $loc: money uses . and two decimals"  contains "$out" "\$8.20 left of \$25.00"
+  check "locale $loc: spend rows too"                 contains "$out" "\$3.10 wk"
+  check "locale $loc: rates still measured"           bash -c "grep -qE 'Down .*[0-9][BKMG]?/s' <<<\"\$1\"" _ "$out"
+  check "locale $loc: no shell errors"                bash -c "! grep -qiE 'invalid number|syntax error|bad substitution' <<<\"\$1\"" _ "$out"
+  out=$(LC_ALL=$loc PATH="$root/tests/mock/darwin:$PATH" G3_PLATFORM=darwin "$root/g3rm0n" --once --no-ai 2>&1)
+  check "locale $loc: macOS backend parses its tools"  bash -c "grep -q 'Used .* 51% 8.2G/16.0G' <<<\"\$1\" && ! grep -qi 'invalid' <<<\"\$1\"" _ "$out"
+else
+  printf '  skip  locale checks: no comma-decimal locale installed\n'
+fi
+
 # ---- 3. the native backend, same checks everywhere -----------------------------------
 out=$("$root/g3rm0n" --once --no-ai 2>&1)
 check "$native: header names the OS"     matches  "$out" "^g3rm0n .*· (macOS|[A-Za-z])"

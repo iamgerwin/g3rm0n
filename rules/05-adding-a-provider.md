@@ -15,7 +15,9 @@ A provider takes a few small edits in `lib/ai.sh` and one line in `lib/core.sh`.
 - `lib/ai.sh`: add the id to `AI_NAME` (display name) and `AI_KIND`.
 - Say where the credential lives:
   - a login file another CLI keeps → add a case to `ai_default_file`;
-  - an API key in the environment → add `AI_ENV[<id>]="PRIMARY_VAR ALT_VAR"`.
+  - an API key in the environment → add `AI_ENV[<id>]="PRIMARY_VAR ALT_VAR"`;
+  - a CLI that keeps its login in the OS credential store on some platform (as
+    Claude Code does on macOS) → add `AI_KEYCHAIN[<id>]="<service name>"` as well.
 
 ## 3. Write `ai_fetch_<id>`
 

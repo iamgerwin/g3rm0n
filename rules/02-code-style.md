@@ -15,6 +15,10 @@
   not use GNU-only or BSD-only flags (`date -d`, `stat -c`, `sed -i`, `readlink -f`,
   `df --output`, `ps --sort`, …); put the call in a backend, or use a form both have.
 - On Linux, read `/proc` and `/sys` directly instead of spawning tools when practical.
+- Numbers always use `.`: `g3rm0n` exports `LC_NUMERIC=C` (keeping the user's UTF-8
+  character set), because `EPOCHREALTIME`, `printf %.2f`, `read -t` and `awk` follow
+  the locale's decimal separator. Don't override `LC_ALL` in modules.
+- Terminal size comes from `ui_term_size`; never from `tput cols`/`tput lines`.
 - `install.sh` must keep working with **bash 3.2** (macOS's own bash): no `mapfile`,
   associative arrays, `${var,,}` or empty arrays under `set -u`. `tests/install.sh`
   runs it with bash 3.2.

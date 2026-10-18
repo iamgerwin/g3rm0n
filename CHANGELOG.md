@@ -8,6 +8,34 @@ All notable changes to g3rm0n are documented here. The format follows
 
 ### Fixed
 
+- **macOS: two columns and the full height again.** The dashboard measured the
+  window with `tput`, which on macOS can't see the terminal from where g3rm0n asked
+  and always answered 80×24. So Macs always got one column, the short footer, and
+  frames cut at 24 rows. g3rm0n now asks the terminal itself, the same way on every
+  platform.
+- **macOS: the Claude panel appears.** Claude Code keeps its login in the macOS
+  Keychain, so g3rm0n never found it. It now finds the `Claude Code-credentials` item
+  (reading only its name), and reads the token only when the panel refreshes.
+  `g3rm0n setup` shows `found · macOS Keychain`.
+- Folded titles whose summary was too long showed no summary at all. Common on Macs
+  (`612 tasks · WindowServer 12%`). Now only the last parts are dropped
+  (`612 tasks`).
+- Numbers no longer depend on the locale. With a comma-decimal locale (German, French,
+  Dutch, …) money showed `$8.2 left of $25,00` and timing could break; g3rm0n now
+  formats numbers with `.` everywhere and keeps your character set.
+- The folded Disk title on macOS said `/` but showed the data volume; it now says `~`.
+
+### Added
+
+- Credential references can point at the macOS Keychain: `keychain:<service>`.
+- Tests:
+  - `tests/ui.sh`: the live layout under a stand-in for macOS's `tput` (two columns,
+    full height, never overflowing) and summary trimming.
+  - `tests/platform.sh`: Keychain logins, the same layout and summaries from both
+    backends, and comma-decimal locales.
+
+### Fixed
+
 - The installer no longer fails with `curl: (56) … 403` on networks that share one
   public IP (offices, schools, CI machines). It finds the latest release through
   GitHub's `releases/latest` redirect instead of the rate-limited API, which is

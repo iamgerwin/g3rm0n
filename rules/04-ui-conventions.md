@@ -33,8 +33,14 @@ Every panel folds to its title line. A folded title shows the panel's summary
 
 - The summary is the one or two numbers someone would unfold the panel to see: a
   usage percent, a balance, a state such as `rate limited`.
-- Keep it to about 25 columns. One that doesn't fit is dropped, never cut, so plan for
-  the longest realistic value.
+- Order its parts by importance, separated by ` · `, and keep the whole to about 25
+  columns. When it doesn't fit, its last parts are dropped (`612 tasks · WindowServer 12%`
+  becomes `612 tasks`); a part is never cut, so colors never break. Plan for the
+  longest realistic value on every platform: Macs run hundreds of processes with
+  long names.
+- The layout depends only on the terminal size from `ui_term_size`, the same on
+  every platform. Never measure the terminal with `tput` inside `$(...)`: macOS's
+  `tput` can't see the terminal from there and answers 80×24.
 - Color only the main number (`ui_tone` for percentages, `c_yellow` for states that
   need attention). The rest stays plain.
 - One-shot output stays exactly as it was before folding: no markers and no digits
