@@ -1,0 +1,42 @@
+#compdef g3rm0n
+# zsh completions for g3rm0n
+#
+# Put this file in a folder on $fpath before compinit runs, e.g. in ~/.zshrc:
+#   fpath+=(~/.local/share/zsh/site-functions)
+#   autoload -Uz compinit && compinit
+# or, after compinit, simply: source /path/to/_g3rm0n
+
+_g3rm0n_sections() {
+  _values -s , 'section' cpu memory disk power processes network ai-tokens ai-credits
+}
+
+_g3rm0n() {
+  local -a opts
+  opts=(
+    '(-1 --once)'{-1,--once}'[print one snapshot and exit]'
+    '(-i --interval)'{-i+,--interval=}'[seconds between refreshes]:seconds: '
+    '(-s --sections)'{-s+,--sections=}'[sections for this run]:sections:_g3rm0n_sections'
+    '--no-ai[hide AI panels, no network calls]'
+    '--no-color[plain output]'
+  )
+  if (( CURRENT == 2 )); then
+    _arguments -s $opts \
+      '1:command:((setup\:"choose sections and AI providers" version\:"print the version" help\:"show help"))'
+  elif [[ $words[2] == setup ]]; then
+    local -a setup_opts=(
+      '--defaults:write a config with everything detected'
+      '--show:print config and detected providers'
+      '--reset:delete the config'
+      '--help:show setup help'
+    )
+    (( CURRENT == 3 )) && _describe -t options 'setup option' setup_opts
+  else
+    _arguments -s $opts
+  fi
+}
+
+if [[ $zsh_eval_context[-1] == loadautofunc ]]; then
+  _g3rm0n "$@"
+else
+  compdef _g3rm0n g3rm0n
+fi
