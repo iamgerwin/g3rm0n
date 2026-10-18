@@ -42,7 +42,8 @@ All notable changes to g3rm0n are documented here. The format follows
   join them. `tests/platform.sh` checks every backend against the contract and runs
   the macOS backend on recorded macOS output on any machine. `tests/install.sh` checks
   the installed file set, release tarballs and the installer under bash 3.2.
-  `scripts/bump-version.sh` works with BSD sed.
+  `scripts/bump-version.sh` works with BSD sed, and a `release-check` workflow
+  installs every published release with the one-line installer on Linux and macOS.
 
 ### Fixed
 

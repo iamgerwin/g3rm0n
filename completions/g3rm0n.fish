@@ -1,4 +1,5 @@
 # fish completions for g3rm0n
+
 # Completes one item of a comma-separated list, keeping the items already typed.
 # (fish's own __fish_complete_list relies on GNU sed, so it breaks on macOS.)
 function __g3rm0n_list --description 'Complete a comma-separated g3rm0n list'
