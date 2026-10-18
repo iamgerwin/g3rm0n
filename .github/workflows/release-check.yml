@@ -1,0 +1,34 @@
+name: release-check
+
+# After a release is published, install it the way users do (the one-line
+# installer from main, in a clean HOME) on every supported platform, and run it.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04, macos-14, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: bash 5 and jq (macOS)
+        if: runner.os == 'macOS'
+        run: brew install bash jq
+      - name: One-line install in a clean HOME
+        run: |
+          export HOME=$(mktemp -d)
+          curl -fsSL https://raw.githubusercontent.com/iamgerwin/g3rm0n/main/install.sh | /bin/bash
+          want=${GITHUB_REF_NAME#v}
+          got=$("$HOME/.local/bin/g3rm0n" version)
+          echo "$got"
+          if [ "${{ github.event_name }}" = release ]; then test "$got" = "g3rm0n $want"; fi
+          "$HOME/.local/bin/g3rm0n" --once --no-ai | head -n 12
+          test ! -e "$HOME/.local/share/g3rm0n/tests"
+          ls -R "$HOME/.local/share/g3rm0n"
