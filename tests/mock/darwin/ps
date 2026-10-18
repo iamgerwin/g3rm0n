@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# BSD ps as the macOS backend calls it; anything else goes to the real ps
+case "$*" in
+  "-A -o state=") printf 'R\nR\nS\nS\nS\nSs\nS\nU\n' ;;
+  "-A -r -c -o pcpu=,rss=,comm=")
+    printf '%5s %8s %s\n' 18.2 1990000 firefox 9.4 812400 "Google Chrome Helper" 3.1 240800 node 0.4 2000 ps 0.1 9000 launchd ;;
+  *) exec /bin/ps "$@" ;;
+esac

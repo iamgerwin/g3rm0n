@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+cat <<'OUT'
+              disk0               cpu    load average
+    KB/t  tps  MB/s  us sy id   1m   5m   15m
+   21.38   54  1.13  12  6 82  2.15 1.98 1.87
+   16.00   10  0.16  15  8 77  2.15 1.98 1.87
+OUT

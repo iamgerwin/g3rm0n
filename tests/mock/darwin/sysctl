@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+[[ $1 == -n ]] && shift
+for k in "$@"; do
+  case $k in
+    machdep.cpu.brand_string) echo "Apple M2 Pro" ;;
+    hw.logicalcpu|hw.physicalcpu) echo 12 ;;
+    hw.perflevel0.logicalcpu) echo 8 ;;
+    hw.perflevel1.logicalcpu) echo 4 ;;
+    hw.pagesize) echo 16384 ;;
+    hw.memsize) echo 17179869184 ;;
+    vm.loadavg) echo "{ 2.15 1.98 1.87 }" ;;
+    vm.swapusage) echo "total = 2048.00M  used = 1024.00M  free = 1024.00M  (encrypted)" ;;
+    kern.boottime) b=$(( EPOCHSECONDS - 273600 )); echo "{ sec = $b, usec = 0 } Thu Oct 15 09:00:00 2026" ;;
+    *) echo "sysctl: unknown oid '$k'" >&2; exit 1 ;;
+  esac
+done

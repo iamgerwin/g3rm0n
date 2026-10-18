@@ -1,29 +1,54 @@
 #!/usr/bin/env bash
-# g3rm0n — a live terminal dashboard for your Linux machine and your AI usage
+# g3rm0n — a live terminal dashboard for your machine (Linux, macOS) and your AI usage
 
-# Started with sh/dash/zsh/ksh (e.g. `sh g3rm0n`)? Hand over to bash before any bash
-# syntax is parsed. This block must stay POSIX.
-if [ -z "${BASH_VERSION:-}" ]; then
-  command -v bash >/dev/null 2>&1 && exec bash "$0" "$@"
-  echo "g3rm0n needs bash 5 or newer, and bash was not found" >&2
+# g3rm0n needs bash 5. Started from sh/dash/zsh/ksh, or by macOS's own bash 3.2? Find a
+# bash 5 (the one on PATH, then where Homebrew and distributions put it) and hand over
+# before any bash 5 syntax is parsed. This block must stay POSIX (and zsh-safe).
+# (bash started as sh runs in POSIX mode, which g3rm0n doesn't support: hand over too)
+if [ -z "${BASH_VERSION:-}" ] || [ "${BASH_VERSION%%.*}" -lt 5 ] \
+   || case ":${SHELLOPTS:-}:" in *:posix:*) true ;; *) false ;; esac; then
+  if [ -z "${G3_REEXEC:-}" ]; then
+    # an explicit list, because zsh doesn't word-split an unquoted $PATH
+    for _b in "$(command -v bash 2>/dev/null)" /opt/homebrew/bin/bash /usr/local/bin/bash /usr/bin/bash /bin/bash; do
+      # shellcheck disable=SC2016  # the candidate bash expands it, not this shell
+      if [ -x "$_b" ] && "$_b" -c '[ "${BASH_VERSION%%.*}" -ge 5 ]' 2>/dev/null; then
+        export G3_REEXEC=1
+        exec "$_b" "$0" "$@"
+      fi
+    done
+  fi
+  echo "g3rm0n needs bash 5 or newer (found ${BASH_VERSION:-no bash})." >&2
+  [ "$(uname -s)" = Darwin ] && echo "Install it with Homebrew: brew install bash" >&2
   exit 1
 fi
+unset G3_REEXEC
 set -o pipefail
 
-if (( BASH_VERSINFO[0] < 5 )); then
-  echo "g3rm0n needs bash 5 or newer (found $BASH_VERSION)" >&2
-  exit 1
+# G3_PLATFORM may be preset only by the test suite, to run a backend against fixtures
+case ${G3_PLATFORM:-$(uname -s)} in
+  Linux|linux)   G3_PLATFORM=linux ;;
+  Darwin|darwin) G3_PLATFORM=darwin ;;
+  *) echo "g3rm0n runs on Linux and macOS (this system is $(uname -s))" >&2; exit 1 ;;
+esac
+# panel widths count characters, which needs a UTF-8 locale (macOS has no C.UTF-8)
+if [[ ${LC_ALL:-${LC_CTYPE:-${LANG:-}}} != *[Uu][Tt][Ff]?(-)8* ]]; then
+  if [[ $G3_PLATFORM == darwin ]]; then export LC_ALL=en_US.UTF-8; else export LC_ALL=C.UTF-8; fi
 fi
-if [[ $(uname -s) != Linux ]]; then
-  echo "g3rm0n reads /proc and /sys, so it runs on Linux only" >&2
-  exit 1
-fi
-# panel widths count characters, which needs a UTF-8 locale
-[[ ${LC_ALL:-${LC_CTYPE:-${LANG:-}}} == *[Uu][Tt][Ff]-8* || ${LC_ALL:-${LC_CTYPE:-${LANG:-}}} == *[Uu][Tt][Ff]8* ]] \
-  || export LC_ALL=C.UTF-8
 
-G3_HOME=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)
-for _m in core ui panel fold input keymap system ai dashboard setup; do
+# where g3rm0n lives, following symlinks (readlink -f isn't on every macOS)
+_src=${BASH_SOURCE[0]}
+while [[ -L $_src ]]; do
+  _dir=$(cd -P "$(dirname "$_src")" && pwd)
+  _src=$(readlink "$_src")
+  [[ $_src == /* ]] || _src=$_dir/$_src
+done
+G3_HOME=$(cd -P "$(dirname "$_src")" && pwd)
+unset _src _dir
+if [[ ! -r $G3_HOME/lib/platform/$G3_PLATFORM.sh ]]; then
+  echo "g3rm0n: this installation has no $G3_PLATFORM support; reinstall it on this machine" >&2
+  exit 1
+fi
+for _m in core ui panel fold input keymap "platform/$G3_PLATFORM" system ai dashboard setup; do
   # shellcheck source=/dev/null
   source "$G3_HOME/lib/$_m.sh"
 done

@@ -42,4 +42,5 @@ optional for small additions that change no existing behavior); otherwise patch.
 5. On `main`, create an annotated tag: `git tag -a vX.Y.Z -m "g3rm0n vX.Y.Z"`, and push it.
 6. Publish a GitHub release from the tag, titled `g3rm0n vX.Y.Z`, using that version's
    CHANGELOG section as the notes.
-7. Check the one-line installer against the new release in a clean `HOME`.
+7. Check the one-line installer against the new release in a clean `HOME`, on Linux
+   and on macOS.

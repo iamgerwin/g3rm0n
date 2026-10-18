@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+case $1 in -productVersion) echo 15.1 ;; -productName) echo macOS ;; *) printf 'ProductName:\tmacOS\nProductVersion:\t15.1\n' ;; esac

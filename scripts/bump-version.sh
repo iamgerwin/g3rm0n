@@ -47,10 +47,14 @@ grep -q "^## \[$new\]" CHANGELOG.md && die "CHANGELOG.md already has $new"
 notes=$(awk '/^## \[Unreleased\]/{on=1; next} /^## \[/{on=0} on' CHANGELOG.md | grep -c '^- ' || true)
 (( notes > 0 )) || die "CHANGELOG.md has nothing under [Unreleased] to release"
 
-sed -i "s/^G3_VERSION=\"$old\"$/G3_VERSION=\"$new\"/" lib/core.sh
-sed -i "s/^## \[Unreleased\]$/## [Unreleased]\n\n## [$new] - $date/" CHANGELOG.md
-sed -i "s|^\[Unreleased\]: .*|[Unreleased]: $url/compare/v$new...HEAD\n[$new]: $url/compare/v$old...v$new|" CHANGELOG.md
-sed -i -E "s/--version [0-9]+\.[0-9]+\.[0-9]+/--version $new/g" README.md install.sh
+# edit in place with GNU or BSD sed (both accept -i.bak), then drop the backups
+sedi() { local file=${*: -1}; sed -i.bak "$@" && rm -f "$file.bak"; }
+sedi "s/^G3_VERSION=\"$old\"$/G3_VERSION=\"$new\"/" lib/core.sh
+awk -v new="$new" -v date="$date" -v url="$url" -v old="$old" '
+  $0 == "## [Unreleased]" { print; print ""; print "## [" new "] - " date; next }
+  /^\[Unreleased\]: / { print "[Unreleased]: " url "/compare/v" new "...HEAD"; print "[" new "]: " url "/compare/v" old "...v" new; next }
+  { print }' CHANGELOG.md >CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
+for f in README.md install.sh; do sedi -E "s/--version [0-9]+\.[0-9]+\.[0-9]+/--version $new/g" "$f"; done
 
 printf 'Bumped %s -> %s (%s)\n' "$old" "$new" "$date"
 tests/docs.sh

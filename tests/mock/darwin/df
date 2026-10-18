@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+[[ $1 == -kP ]] || exec /bin/df "$@"
+shift
+printf 'Filesystem     1024-blocks      Used Available Capacity  Mounted on\n'
+for p in "$@"; do
+  if [[ $p == / ]]; then printf '/dev/disk3s1s1   482797652  10200000 300000000     4%%    /\n'
+  else printf '/dev/disk3s5     482797652 160000000 300000000    35%%    /System/Volumes/Data\n'; fi
+done

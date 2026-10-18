@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+if [[ $* == *IOAccelerator* ]]; then
+  echo '+-o AGXAcceleratorG14X  <class AGXAcceleratorG14X, id 0x1000004a1, registered, matched, active, busy 0 (0 ms), retain 63>'
+  echo '    "PerformanceStatistics" = {"In use system memory"=1234567890,"Device Utilization %"=18,"Renderer Utilization %"=15,"Tiler Utilization %"=12}'
+elif [[ $* == *IOBlockStorageDriver* ]]; then
+  t=${EPOCHREALTIME/./}; r=$(( 50000000000 + t )); w=$(( 20000000000 + t / 4 ))
+  echo '+-o IOBlockStorageDriver  <class IOBlockStorageDriver, id 0x100000abc, registered, matched, active, busy 0 (0 ms), retain 5>'
+  echo '    {'
+  echo "      \"Statistics\" = {\"Operations (Write)\"=1234,\"Latency Time (Write)\"=0,\"Bytes (Read)\"=$r,\"Errors (Write)\"=0,\"Bytes (Write)\"=$w,\"Operations (Read)\"=5678}"
+  echo '    }'
+fi

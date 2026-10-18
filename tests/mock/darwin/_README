@@ -1,0 +1,5 @@
+Fixtures for the macOS backend (lib/platform/darwin.sh): stand-ins for the macOS
+commands it reads, printing output in the real macOS 15 format with synthetic values.
+tests/platform.sh puts this folder first on PATH and sets G3_PLATFORM=darwin, so the
+backend's parsing is tested on any machine. On a real Mac, CI also runs the backend
+against the real commands. Never put real machine data in here.

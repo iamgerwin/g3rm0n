@@ -1,6 +1,6 @@
 # g3rm0n
 
-**A live terminal dashboard for your Linux machine and your AI usage.**
+**A live terminal dashboard for your Linux or Mac and your AI usage.**
 
 Type `g3rm0n` to see CPU, memory, disk, power, processes and network at a glance.
 Next to them are your AI subscription limits (Claude, Codex, Z.ai) and prepaid API
@@ -66,12 +66,40 @@ Split  topped up ¥100.00 · granted ¥10.00       Key    no spend cap
 - **Script-friendly.** `g3rm0n --once` prints one snapshot, and color is dropped
   automatically when output is piped.
 
+## Platforms
+
+g3rm0n has the same panels, keys, folding, setup and AI usage on every platform it
+supports. Each platform reads the machine with its own stock tools, through a backend
+that every release tests against the same suite.
+
+| Platform | Backend | Reads the machine with |
+|----------|---------|------------------------|
+| Linux (Ubuntu 20.04+, Debian 11+, Fedora, Arch, …) | `linux` | `/proc`, `/sys`, `df`, `ps`, `ip` |
+| macOS 12 Monterey or newer (Apple silicon and Intel) | `darwin` | `sysctl`, `vm_stat`, `iostat`, `netstat`, `ioreg`, `pmset`, `df`, `ps`, `route` |
+
+Windows (PowerShell and Command Prompt) is planned for a later release.
+
+Where macOS keeps a reading for root only, g3rm0n shows the closest reading any user
+can get, instead of asking for `sudo`:
+
+| Reading | Linux | macOS |
+|---------|-------|-------|
+| `Cores` row | activity of each core | core layout, e.g. `8 performance · 4 efficiency` |
+| `Temp` row | hottest sensor | `no sensors exposed` (sensors need root via `powermetrics`) |
+| `GPU` row | NVIDIA or AMD usage, memory, temperature | Apple GPU usage |
+| `Used` memory | total minus available | app memory + wired + compressed, as Activity Monitor counts it |
+| Disk `~` row | your home partition, when it's separate | the data volume, where your files live |
+
 ## Requirements
 
-- Linux with bash 5 or newer (Ubuntu 20.04+, Debian 11+, Fedora, Arch, …)
-- GNU coreutils and procps (`ps`), which come with every mainstream distribution
-- **Optional:** `curl` and `jq` for the AI panels, `ip` (iproute2) for interface
-  details, and `nvidia-smi` for NVIDIA GPU stats
+- **Linux:** bash 5 or newer, GNU coreutils and procps (`ps`), which come with every
+  mainstream distribution.
+- **macOS:** bash 5 from [Homebrew](https://brew.sh) (`brew install bash`); macOS itself
+  ships bash 3.2. You don't need to change your login shell: g3rm0n finds bash 5 on its
+  own, and zsh, fish and the others keep working as they are.
+- **Optional:** `curl` and `jq` for the AI panels (on macOS: `brew install jq` if
+  `jq` is missing); on Linux, `ip` (iproute2) for interface details and `nvidia-smi`
+  for NVIDIA GPU stats.
 
 ## Install
 
@@ -79,16 +107,31 @@ Split  topped up ¥100.00 · granted ¥10.00       Key    no spend cap
 curl -fsSL https://raw.githubusercontent.com/iamgerwin/g3rm0n/main/install.sh | bash
 ```
 
-This installs the latest release into `~/.local/share/g3rm0n`, links `~/.local/bin/g3rm0n`,
-and adds bash, zsh and fish completions. On fish, it also puts `~/.local/bin` on your
-`PATH`; for other shells it prints the exact line to add if `~/.local/bin` is missing.
-No root is needed. Pipe the installer into `bash`, not `sh`.
+The same command works on Linux and macOS. It installs the latest release into
+`~/.local/share/g3rm0n`, links `~/.local/bin/g3rm0n`, and adds bash, zsh and fish
+completions. On fish, it also puts `~/.local/bin` on your `PATH`; for other shells
+(zsh is the macOS default) it prints the exact line to add if `~/.local/bin` is
+missing. No root is needed. Pipe the installer into `bash`, not `sh`.
+
+Only what g3rm0n needs to run is installed: the program, its modules, the backend
+for your operating system, the completions and the license (about 100 KB, against about 430 KB for the whole repository). Tests,
+docs and development tools stay in the repository.
+
+**On a Mac**, install bash 5 first, then run the command above:
+
+```bash
+brew install bash jq
+curl -fsSL https://raw.githubusercontent.com/iamgerwin/g3rm0n/main/install.sh | bash
+```
 
 Other ways:
 
 ```bash
 # a specific version
 curl -fsSL https://raw.githubusercontent.com/iamgerwin/g3rm0n/main/install.sh | bash -s -- --version 0.1.2
+
+# offline, from an unpacked release (or a clone), copying only the run-time files
+./install.sh --from ~/Downloads/g3rm0n
 
 # from a clone (links the checkout, handy for development)
 git clone https://github.com/iamgerwin/g3rm0n && cd g3rm0n && ./install.sh
@@ -234,7 +277,8 @@ dashboard keeps working.
 - **Calls are gentle.** Each provider is called at most once a minute, with a longer
   back-off after a rate limit.
 - **Only layout is remembered.** `~/.local/state/g3rm0n/folded` lists which panels
-  are folded. Nothing else is written outside the cache.
+  are folded. Nothing else is written outside the cache. (On macOS, the cache also
+  holds a short-lived CPU measurement while g3rm0n runs, removed when it exits.)
 - **No telemetry**, no update checks, no background service.
 - **`--no-ai`** guarantees zero network traffic.
 
@@ -280,6 +324,8 @@ openrouter.credentials = env:OPENROUTER_API_KEY
 | A provider is missing | Run `g3rm0n setup --show` to see whether its credential was found |
 | Key is set but shows *not found* | It isn't exported. Use `export` (bash/zsh), `set -gx` (fish) or `setenv` (tcsh) |
 | `g3rm0n: command not found` | `~/.local/bin` isn't on your `PATH`; the installer printed the line to add for your shell |
+| `g3rm0n needs bash 5 or newer` (macOS) | `brew install bash`. g3rm0n finds it in `/opt/homebrew/bin` or `/usr/local/bin` by itself |
+| `Temp  no sensors exposed` on a Mac | Expected: macOS only shows temperatures to root |
 | Boxes or misaligned bars | Use a UTF-8 locale and a font with box-drawing glyphs |
 | Can't select text with the mouse | Hold Shift (Option on macOS) while dragging, or use `--no-mouse` / `mouse = off` |
 | Clicking a title does nothing | Your terminal isn't sending mouse events (in tmux: `set -g mouse on`). Use the digit keys instead |

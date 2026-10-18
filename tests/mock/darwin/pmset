@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+printf "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=4653155)\t81%%; discharging; 3:10 remaining present: true\n"

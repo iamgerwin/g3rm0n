@@ -4,6 +4,8 @@
 set -uo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+# shellcheck source=tests/lib/common.sh
+source "$root/tests/lib/common.sh"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
@@ -40,6 +42,7 @@ check "piped output has no escape codes" lacks "$out" $'\e['
 check "Claude panel" contains "$out" "AI Tokens · Claude"
 check "Claude 5h window" contains "$out" "42%"
 check "Claude plan" contains "$out" "pro plan"
+check "Claude reset time parsed" bash -c "grep -qE 'resets in (1h 59m|2h 00m)' <<<\"\$1\"" _ "$out"
 check "Codex panel" contains "$out" "AI Tokens · Codex"
 check "Z.ai tools fallback" contains "$out" "Tools"
 check "DeepSeek balance" contains "$out" "¥110.00"
@@ -48,7 +51,7 @@ check "OpenRouter credits" contains "$out" "\$8.20 left of \$25.00"
 check "OpenRouter spend" contains "$out" "\$0.42 day"
 
 check "cache holds no tokens" bash -c "! grep -rq 'test' '$XDG_CACHE_HOME/g3rm0n/ai'/*.row"
-check "cache dir is private" bash -c "[[ \$(stat -c %a '$XDG_CACHE_HOME/g3rm0n/ai') == 700 ]]"
+check "cache dir is private" test "$(file_mode "$XDG_CACHE_HOME/g3rm0n/ai")" = 700
 
 out=$("$g3" --once --no-ai 2>&1)
 check "--no-ai hides AI panels" lacks "$out" "AI Tokens"
@@ -63,7 +66,7 @@ check "rejected key shows expired" contains "$out" "expired"
 "$g3" setup --defaults >/dev/null 2>&1
 cfg=$XDG_CONFIG_HOME/g3rm0n/config
 check "setup --defaults writes config" test -f "$cfg"
-check "config is mode 600" bash -c "[[ \$(stat -c %a '$cfg') == 600 ]]"
+check "config is mode 600" test "$(file_mode "$cfg")" = 600
 check "config references, never stores" bash -c "grep -q 'zai.credentials = env:GLM_API_KEY' '$cfg' && ! grep -q '= test' '$cfg'"
 check "config lists detected providers" bash -c "grep -q '^providers = claude codex zai deepseek openrouter' '$cfg'"
 

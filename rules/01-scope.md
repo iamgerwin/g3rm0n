@@ -1,7 +1,7 @@
 # 1. Product scope
 
-g3rm0n is a **read-only monitoring dashboard** for a Linux machine and for the AI
-services its owner uses. That is the whole product.
+g3rm0n is a **read-only monitoring dashboard** for a Linux or macOS machine and for
+the AI services its owner uses. That is the whole product.
 
 ## In scope
 
@@ -17,8 +17,12 @@ services its owner uses. That is the whole product.
 - Anything that **changes an account**: buying credits, rotating keys, refreshing
   OAuth tokens, signing in or out of another tool.
 - Background services, daemons, cron jobs or telemetry of any kind.
-- Support for other operating systems by faking Linux interfaces. A port must read
-  that platform's real counters and gets its own discussion first.
+- Support for another operating system by faking Linux interfaces or bundling
+  compatibility layers. A port is a new platform backend that reads that system's
+  real counters with its stock tools ([architecture](../ARCHITECTURE.md#platforms)),
+  and it gets its own discussion first. Windows is the next planned one.
+- Platform-only features. Every feature works on every supported platform; where an
+  OS keeps a reading for root, show the closest unprivileged reading and document it.
 
 If a feature request needs any of the above, the answer is no, or a separate tool.
 

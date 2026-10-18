@@ -6,6 +6,8 @@
 set -uo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+# shellcheck source=tests/lib/common.sh
+source "$root/tests/lib/common.sh"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
@@ -36,7 +38,7 @@ mkdir -p "$ZDOTDIR"
 pty() {
   local sh=$1; shift
   { sleep 0.4; local k; for k in "$@"; do printf '%b' "$k"; sleep 0.15; done; sleep 0.4; } \
-    | SHELL=$(command -v "$sh") script -qfec "g3rm0n setup" /dev/null 2>&1
+    | pty_run "$sh" "g3rm0n setup" 2>&1
 }
 
 cfg=$XDG_CONFIG_HOME/g3rm0n/config
@@ -153,7 +155,7 @@ else
 fi
 
 if has_shell zsh && zsh -c 'zmodload zsh/zpty' 2>/dev/null; then
-  zsh_complete() { timeout 20 zsh "$root/tests/zsh-complete.zsh" "$1" 2>&1; }
+  zsh_complete() { with_timeout 20 zsh "$root/tests/zsh-complete.zsh" "$1" 2>&1; }
   check "zsh completion: syntax" zsh -n "$root/completions/_g3rm0n"
   check "zsh completion: subcommands" bash -c "grep -qx setup <<<\"\$1\"" _ "$(zsh_complete 'g3rm0n se')"
   check "zsh completion: options" bash -c "grep -qx -- --no-ai <<<\"\$1\"" _ "$(zsh_complete 'g3rm0n --no')"
@@ -168,7 +170,7 @@ ihome=$tmp/ihome
 mkdir -p "$ihome"
 # a minimal PATH without ~/.local/bin, plus wherever the shells under test live
 ipath=/usr/local/bin:/usr/bin:/bin
-for sh in zsh fish; do has_shell "$sh" && ipath+=":$(dirname "$(command -v "$sh")")"; done
+for sh in bash zsh fish; do has_shell "$sh" && ipath+=":$(dirname "$(command -v "$sh")")"; done
 iclean=(env -i "HOME=$ihome" "PATH=$ipath" "TERM=dumb" "LANG=C.UTF-8")
 inst=$("${iclean[@]}" bash "$root/install.sh" 2>&1)
 check "installer: links the binary" test -L "$ihome/.local/bin/g3rm0n"

@@ -32,27 +32,45 @@ jobs:
           copy; sed -i 's/^## \[Unreleased\]$/## [Unreleased]\n\n### Fixed\n\n- CI dry run./' CHANGELOG.md
           scripts/bump-version.sh patch --date 2000-01-01
   test:
+    # the same suites on every platform g3rm0n supports
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04]
+        os: [ubuntu-22.04, ubuntu-24.04, macos-14, macos-15]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install shells under test
+        with:
+          fetch-depth: 0
+      - name: Install shells under test (Linux)
+        if: runner.os == 'Linux'
         run: sudo apt-get update -qq && sudo apt-get install -y -qq zsh fish ksh mksh tcsh busybox
+      - name: Install bash 5, jq and shells under test (macOS; zsh, dash, ksh, tcsh ship with it)
+        if: runner.os == 'macOS'
+        run: |
+          brew install bash jq fish mksh
+          bash --version | head -n1
+          /bin/bash --version | head -n1
       - name: Syntax
         run: |
-          bash -n g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/*.sh tests/mock/curl scripts/*.sh .githooks/* .claude/hooks/*.sh
+          bash -n g3rm0n install.sh lib/*.sh lib/platform/*.sh completions/g3rm0n.bash tests/*.sh tests/lib/*.sh tests/mock/curl tests/mock/darwin/[a-z]* scripts/*.sh .githooks/* .claude/hooks/*.sh
           zsh -n completions/_g3rm0n tests/zsh-complete.zsh
           fish --no-execute completions/g3rm0n.fish
       - name: ShellCheck
-        run: shellcheck -x g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/*.sh tests/mock/curl scripts/*.sh .githooks/* .claude/hooks/*.sh
+        if: runner.os == 'Linux'
+        run: shellcheck -x g3rm0n install.sh lib/*.sh lib/platform/*.sh completions/g3rm0n.bash tests/*.sh tests/lib/*.sh tests/mock/curl scripts/*.sh .githooks/* .claude/hooks/*.sh
       - name: Smoke tests
         run: tests/smoke.sh
+      - name: Platform tests (contract, macOS fixtures, native backend)
+        run: tests/platform.sh
       - name: Cross-shell tests (bash, zsh, fish, dash, ksh, mksh, tcsh, busybox)
         run: tests/shells.sh
       - name: Interaction tests (folding, keys, mouse in a pseudo-terminal)
         run: tests/ui.sh
+      - name: Install tests (run-time files only, release tarball, bash 3.2)
+        run: tests/install.sh
+      - name: Docs drift check
+        run: tests/docs.sh
       - name: Installer (from checkout, clean HOME)
         run: |
           export HOME=$(mktemp -d)

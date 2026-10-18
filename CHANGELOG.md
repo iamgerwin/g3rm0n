@@ -6,6 +6,48 @@ All notable changes to g3rm0n are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **macOS support** (macOS 12 or newer, Apple silicon and Intel), with the same
+  panels, keys, folding, setup and AI usage as on Linux. A new platform backend reads
+  the Mac with its stock tools (`sysctl`, `vm_stat`, `iostat`, `netstat`, `ioreg`,
+  `pmset`, `df`, `ps`, `route`) and never needs `sudo`. Memory follows Activity Monitor,
+  and the disk panel shows the data volume where your files live. The Apple GPU is shown.
+  Where macOS keeps a reading for root, g3rm0n shows the closest one any user can
+  get: the core layout instead of per-core load, and no temperature.
+- **The installer works on macOS.** The same one-line `curl … | bash` runs with
+  macOS's own bash 3.2, finds Homebrew's bash 5 (or says `brew install bash`), and
+  gives macOS-style `PATH` hints (`~/.zshrc`, `~/.bash_profile`).
+- g3rm0n finds a bash 5 by itself when it's started by an older bash (macOS's
+  `/bin/bash`) or by bash in POSIX mode (`sh g3rm0n` where `sh` is bash).
+- `install.sh --from DIR` installs offline from an unpacked release or a checkout.
+- README: a **Platforms** section that lists what each platform reads and where
+  readings differ.
+
+### Changed
+
+- **Only run-time files are installed**: the program, its modules, the backend for
+  your operating system, the completions and the license, about 100 KB instead of
+  the whole repository. Reinstalling removes files left by older installs, and
+  release tarballs no longer carry tests, rules, CI or contributor docs.
+- Everything OS-specific moved into platform backends (`lib/platform/linux.sh`,
+  `lib/platform/darwin.sh`) behind one documented contract. g3rm0n refuses to start
+  with an incomplete backend. Linux output is unchanged.
+- Claude reset times are parsed in `jq` instead of with GNU `date`, so they behave
+  the same everywhere.
+- For contributors: every test suite now runs on Ubuntu 22.04 and 24.04 and on macOS
+  14 and 15, through shared portable helpers (`tests/lib/common.sh`). Two new suites
+  join them. `tests/platform.sh` checks every backend against the contract and runs
+  the macOS backend on recorded macOS output on any machine. `tests/install.sh` checks
+  the installed file set, release tarballs and the installer under bash 3.2.
+  `scripts/bump-version.sh` works with BSD sed.
+
+### Fixed
+
+- `curl … | sh` is now refused with the "run this installer with bash" hint on
+  systems where `sh` is bash (macOS, Fedora), instead of running in POSIX mode.
+- `zsh g3rm0n` finds bash correctly (zsh doesn't split an unquoted `$PATH`).
+
 ## [0.1.2] - 2026-10-18
 
 ### Added

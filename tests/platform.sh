@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# Platform tests: every backend in lib/platform/ against the same contract.
+#   1. contract: each backend defines every function in SYS_CONTRACT, and g3rm0n
+#      refuses to start with an incomplete one
+#   2. macOS backend on recorded macOS output (tests/mock/darwin), on any machine
+#   3. the native backend of the machine running the tests, with the same checks on
+#      Linux and macOS, so every implementation is held to the same features
+# No network, no real credentials, nothing outside a temp directory is touched.
+set -uo pipefail
+
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+# shellcheck source=tests/lib/common.sh
+source "$root/tests/lib/common.sh"
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+pass=0 fail=0
+check() { # description command...
+  local desc=$1; shift
+  if "$@" >/dev/null 2>&1; then pass=$(( pass + 1 )); printf '  ok    %s\n' "$desc"
+  else fail=$(( fail + 1 )); printf '  FAIL  %s\n' "$desc"; fi
+}
+contains() { grep -qF -- "$2" <<<"$1"; }
+lacks()    { ! grep -qF -- "$2" <<<"$1"; }
+matches()  { grep -qE -- "$2" <<<"$1"; }
+
+export HOME=$tmp/home XDG_CONFIG_HOME=$tmp/config XDG_CACHE_HOME=$tmp/cache XDG_STATE_HOME=$tmp/state
+export NO_COLOR=1 COLUMNS=100
+mkdir -p "$HOME"
+case $(uname -s) in Darwin) native=darwin ;; *) native=linux ;; esac
+
+echo "g3rm0n platform tests (native: $native)"
+
+# ---- 1. the contract -------------------------------------------------------------
+for b in "$root"/lib/platform/*.sh; do
+  name=${b##*/}; name=${name%.sh}
+  missing=$(bash -c 'G3_PLATFORM=$1; for m in core ui; do source "$2/lib/$m.sh"; done
+                     source "$3"; source "$2/lib/system.sh"; sys_contract_missing' _ "$name" "$root" "$b")
+  check "contract: $name backend defines every plat_ function" test -z "$missing"
+done
+mkdir -p "$tmp/broken"
+cp -R "$root/g3rm0n" "$root/lib" "$tmp/broken/"
+sed -i.bak '/^plat_gpu()/,/^}/d' "$tmp/broken/lib/platform/$native.sh"
+out=$("$tmp/broken/g3rm0n" --once --no-ai 2>&1)
+check "contract: an incomplete backend is refused by name" contains "$out" "missing: plat_gpu"
+
+# ---- 2. the macOS backend on recorded macOS output ---------------------------------
+out=$(PATH="$root/tests/mock/darwin:$PATH" G3_PLATFORM=darwin "$root/g3rm0n" --once --no-ai 2>&1)
+check "darwin: OS name"                  contains "$out" "macOS 15.1"
+check "darwin: CPU usage from iostat"    matches  "$out" "Usage .* 23%"
+check "darwin: core layout"              contains "$out" "8 performance · 4 efficiency"
+check "darwin: load and threads"         contains "$out" "2.15 · 1.98 · 1.87 · 12 threads"
+check "darwin: CPU model"                contains "$out" "Apple M2 Pro"
+check "darwin: memory like Activity Monitor" matches "$out" "Used .* 51% 8.2G/16.0G"
+check "darwin: swap"                     matches  "$out" "Swap .* 50% 1.0G/2.0G"
+check "darwin: file cache"               contains "$out" "4.1G buffers & page cache"
+check "darwin: system volume"            matches  "$out" "^/ .* 4% 9.7G/460.4G apfs"
+check "darwin: data volume shown as ~"   matches  "$out" "^~ .* 35% 152.5G/460.4G apfs"
+check "darwin: disk throughput"          matches  "$out" "read [1-9][0-9.]*[KM]/s"
+check "darwin: battery"                  contains "$out" "81% · discharging"
+check "darwin: Apple GPU"                matches  "$out" "GPU .* 18%"
+check "darwin: no root-only sensors"     contains "$out" "no sensors exposed"
+check "darwin: uptime"                   contains "$out" "Uptime 3d 4h"
+check "darwin: tasks"                    contains "$out" "8 total · 2 running"
+check "darwin: busiest process"          matches  "$out" "1 +firefox"
+check "darwin: names with spaces"        contains "$out" "Google Chrome He"
+check "darwin: ps never lists itself"    bash -c "! grep -qE '^[0-9] +ps ' <<<\"\$1\"" _ "$out"
+check "darwin: network rate"             matches  "$out" "Down .*[1-9][0-9.]*[KM]/s"
+check "darwin: link"                     contains "$out" "en0 · 192.168.1.24"
+check "darwin: VPN, not macOS's own tunnels" contains "$out" "VPN    utun4 · 100.101.1.7"
+out=$(PATH="$root/tests/mock/darwin:$PATH" G3_PLATFORM=darwin "$root/g3rm0n" --once --no-ai --fold all 2>&1)
+check "darwin: folded summaries"         contains "$out" "▸ ◫ Memory · 51% · 8.2G/16.0G"
+check "darwin: CPU measurement cleaned up" bash -c "! ls '$XDG_CACHE_HOME'/g3rm0n/cpu.* 2>/dev/null"
+
+# ---- 3. the native backend, same checks everywhere -----------------------------------
+out=$("$root/g3rm0n" --once --no-ai 2>&1)
+check "$native: header names the OS"     matches  "$out" "^g3rm0n .*· (macOS|[A-Za-z])"
+check "$native: CPU usage is a percent"  matches  "$out" "^Usage .* +([0-9]|[1-9][0-9]|100)%"
+check "$native: cores row"               matches  "$out" "^Cores +[^ ]"
+check "$native: load average"            matches  "$out" "^Load +[0-9.]+ · [0-9.]+ · [0-9.]+ · [0-9]+ threads"
+check "$native: memory total"            matches  "$out" "Used +.*%.*/[1-9][0-9.]*[MGT]"
+check "$native: root volume"             matches  "$out" "^/ +.*%"
+check "$native: disk throughput row"     matches  "$out" "^I/O +read .*/s · write .*/s"
+check "$native: battery row"             matches  "$out" "Batt +"
+check "$native: uptime"                  matches  "$out" "Uptime [0-9]+(d|h|m)"
+check "$native: tasks"                   matches  "$out" "Tasks +[1-9][0-9]* total · [0-9]+ running"
+check "$native: three busiest processes" bash -c "(( \$(grep -cE '^[123] +[^ ]' <<<\"\$1\") == 3 ))" _ "$out"
+check "$native: network rows"            matches  "$out" "Down .*/s"
+check "$native: link row"                matches  "$out" "Link +[^ ]"
+
+printf '\n%d passed, %d failed\n' "$pass" "$fail"
+(( fail == 0 ))

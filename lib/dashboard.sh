@@ -85,7 +85,7 @@ dash_event() { # IN_EVENT -> action, then dash_do; returns 1 to quit
   esac
 }
 
-dash_restore() { (( ${G3_MOUSE:-0} )) && in_mouse_off; printf '\e[?1049l\e[?25h\e[0m'; }
+dash_restore() { (( ${G3_MOUSE:-0} )) && in_mouse_off; printf '\e[?1049l\e[?25h\e[0m'; plat_cleanup; }
 
 dash_run() { # once interval [fold-list]
   local once=$1 interval=$2 fold_list=${3:-} cols key
@@ -106,6 +106,7 @@ dash_run() { # once interval [fold-list]
     dash_sample
     dash_render 0 "$cols"
     printf '%s\n' "${OUT[@]}"
+    plat_cleanup
     return
   fi
 
