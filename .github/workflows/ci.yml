@@ -16,12 +16,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Install shells under test
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq zsh fish ksh mksh tcsh busybox
       - name: Syntax
-        run: bash -n g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/smoke.sh tests/mock/curl
+        run: |
+          bash -n g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/*.sh tests/mock/curl
+          zsh -n completions/_g3rm0n tests/zsh-complete.zsh
+          fish --no-execute completions/g3rm0n.fish
       - name: ShellCheck
-        run: shellcheck -x g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/smoke.sh tests/mock/curl
+        run: shellcheck -x g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/*.sh tests/mock/curl
       - name: Smoke tests
         run: tests/smoke.sh
+      - name: Cross-shell tests (bash, zsh, fish, dash, ksh, mksh, tcsh, busybox)
+        run: tests/shells.sh
       - name: Installer (from checkout, clean HOME)
         run: |
           export HOME=$(mktemp -d)
