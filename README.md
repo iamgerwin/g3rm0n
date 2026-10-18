@@ -118,8 +118,17 @@ g3rm0n -i 5               refresh every 5 seconds
 g3rm0n -s cpu,memory      show only some sections for this run
 g3rm0n --no-ai            system panels only, no network calls at all
 g3rm0n setup              choose what the dashboard shows
+g3rm0n version            print the version
 g3rm0n help               all options
 ```
+
+| Option | What it does |
+|--------|--------------|
+| `-1`, `--once` | Print one snapshot and exit. This is automatic when output isn't a terminal |
+| `-i N`, `--interval N` | Seconds between refreshes (whole number, 1 or more). Overrides the config for this run |
+| `-s LIST`, `--sections LIST` | Comma-separated sections for this run, e.g. `cpu,memory,ai-tokens` |
+| `--no-ai` | Hide the AI panels and make no network calls |
+| `--no-color` | Plain output without color (`NO_COLOR` works too) |
 
 Sections: `cpu` `memory` `disk` `power` `processes` `network` `ai-tokens` `ai-credits`.
 
@@ -234,8 +243,13 @@ This keeps your config in `~/.config/g3rm0n`; delete that folder too for a clean
 
 Contributions are welcome. Please read the rules in [`rules/`](rules/README.md) first.
 They cover scope, code style, security, UI conventions, how to add a provider,
-testing and releases. They apply equally to people and to coding agents. See also
-[CONTRIBUTING.md](CONTRIBUTING.md).
+testing, releases and documentation. They apply equally to people and to coding
+agents ([AGENTS.md](AGENTS.md)). See also [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Docs are kept in step with the code by a deterministic drift check, `tests/docs.sh`.
+It runs from a git pre-commit hook (`git config core.hooksPath .githooks`), from the
+coding-agent stop hook and in CI. Every code change ships with a
+[CHANGELOG](CHANGELOG.md) entry.
 
 ## License
 

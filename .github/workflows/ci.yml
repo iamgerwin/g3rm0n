@@ -9,6 +9,28 @@ permissions:
   contents: read
 
 jobs:
+  docs:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Docs drift check
+        run: tests/docs.sh
+      - name: Changelog entry for code changes
+        if: github.event_name == 'pull_request'
+        run: tests/docs.sh --since "origin/${{ github.base_ref }}"
+      - name: Drift check catches drift, bump script keeps docs aligned (on a copy)
+        run: |
+          src=$PWD
+          copy() { rm -rf "$RUNNER_TEMP/r" && cp -r "$src" "$RUNNER_TEMP/r" && cd "$RUNNER_TEMP/r"; }
+          caught() { if "$@" >/dev/null; then echo "drift not caught: $*"; exit 1; fi; }
+          copy; sed -i 's/^G3_VERSION=.*/G3_VERSION="9.9.9"/' lib/core.sh; caught tests/docs.sh
+          copy; sed -i 's/--no-color/--plain/g' README.md;               caught tests/docs.sh
+          copy; sed -i 's/ ai-credits//' completions/g3rm0n.fish;        caught tests/docs.sh
+          copy; echo '# tweak' >>lib/ui.sh; git add -A;                  caught tests/docs.sh --staged
+          copy; sed -i 's/^## \[Unreleased\]$/## [Unreleased]\n\n### Fixed\n\n- CI dry run./' CHANGELOG.md
+          scripts/bump-version.sh patch --date 2000-01-01
   test:
     strategy:
       matrix:
@@ -20,11 +42,11 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq zsh fish ksh mksh tcsh busybox
       - name: Syntax
         run: |
-          bash -n g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/*.sh tests/mock/curl
+          bash -n g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/*.sh tests/mock/curl scripts/*.sh .githooks/* .claude/hooks/*.sh
           zsh -n completions/_g3rm0n tests/zsh-complete.zsh
           fish --no-execute completions/g3rm0n.fish
       - name: ShellCheck
-        run: shellcheck -x g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/*.sh tests/mock/curl
+        run: shellcheck -x g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/*.sh tests/mock/curl scripts/*.sh .githooks/* .claude/hooks/*.sh
       - name: Smoke tests
         run: tests/smoke.sh
       - name: Cross-shell tests (bash, zsh, fish, dash, ksh, mksh, tcsh, busybox)

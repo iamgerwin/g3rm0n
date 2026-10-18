@@ -24,7 +24,10 @@ lib/ai.sh           AI providers, cache and AI panels
 lib/dashboard.sh    frame composition, live loop, one-shot output
 lib/setup.sh        g3rm0n setup
 completions/        bash, zsh (_g3rm0n) and fish completions
-tests/              smoke tests, cross-shell tests and mocks
+tests/              smoke tests, cross-shell tests, docs drift check and mocks
+scripts/            maintainer tools (bump-version.sh); never installed
+.githooks/          git hooks (enable with: git config core.hooksPath .githooks)
+.claude/            coding-agent project settings and hooks
 rules/              these rules
 ```
 

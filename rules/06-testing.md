@@ -11,7 +11,11 @@ zsh -n completions/_g3rm0n; fish --no-execute completions/g3rm0n.fish   # syntax
 shellcheck -x g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/*.sh   # lint, zero findings
 tests/smoke.sh                                                 # behavior, no network
 tests/shells.sh                                                # every installed shell
+tests/docs.sh                                                  # docs match the code
 ```
+
+`tests/docs.sh` is the documentation drift check described in
+[documentation](08-documentation.md); the pre-commit hook runs it with `--staged`.
 
 Both suites run against temporary config and cache folders and put
 `tests/mock/curl` first on `PATH`, so they never touch your real setup or real APIs.

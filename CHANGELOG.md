@@ -8,32 +8,48 @@ All notable changes to g3rm0n are documented here. The format follows
 
 ### Added
 
-- zsh completions (`completions/_g3rm0n`), installed by `install.sh`.
-- Hints that tell you what to type (exporting an API key, adding to `PATH`) now use
-  the syntax of the shell you started g3rm0n or the installer from: bash, zsh, fish,
-  ksh, tcsh/csh, nushell, xonsh or elvish.
-- `g3rm0n setup --show` explains that API keys must be exported.
-- Cross-shell test suite (`tests/shells.sh`): the dashboard, interactive setup, the
-  installer and completions, started from bash, zsh, fish, dash, ksh, mksh, tcsh and
-  busybox sh. CI installs every one of them.
+- **zsh completions** (`completions/_g3rm0n`). `install.sh` installs them to
+  `~/.local/share/zsh/site-functions` and prints the `fpath` line to add.
+- **Hints in your shell's syntax.** When g3rm0n or its installer tells you what to type
+  (exporting an API key, adding `~/.local/bin` to `PATH`), it now uses the syntax of
+  the shell you started it from: bash, zsh, fish, ksh, tcsh/csh, nushell, xonsh or elvish.
+- `g3rm0n setup --show` explains that API keys must be exported to be seen.
+- README: a **Shells** section (completions and key-export syntax per shell), a full
+  options table, and troubleshooting rows for unexported keys and a missing `PATH` entry.
+- For contributors:
+  - **Documentation drift check** (`tests/docs.sh`). It fails when the README,
+    completions, rules or changelog disagree with the code, and when product code
+    changes arrive without a `CHANGELOG.md` entry. It runs from a git pre-commit
+    hook (`.githooks/pre-commit`), a coding-agent stop hook (`.claude/settings.json`)
+    and CI.
+  - `scripts/bump-version.sh` bumps the version and cuts the changelog section in one step.
+  - Cross-shell test suite (`tests/shells.sh`). It runs the dashboard, interactive
+    setup, installer and completions from bash, zsh, fish, dash, ksh, mksh, tcsh and
+    busybox sh.
+  - New rule: [documentation](rules/08-documentation.md). There is also a project
+    `CLAUDE.md`, and `AGENTS.md` is expanded.
 
 ### Fixed
 
-- `sh g3rm0n` (or dash/ksh/zsh) now hands over to bash instead of failing with syntax errors.
-- `curl … | sh` now stops with "run this installer with bash" instead of a
-  misleading "Linux only" error.
+- `sh g3rm0n` (and dash, ksh, mksh, zsh or busybox sh) now hands over to bash instead
+  of failing with syntax errors.
+- `curl … | sh` now stops with "run this installer with bash" instead of a misleading
+  "Linux only" error.
 - `install.sh --help` works when the installer is piped.
-- A piped install run from inside a folder that looks like a g3rm0n checkout no
-  longer links that folder instead of downloading the release.
+- A piped install run from inside a folder that looks like a g3rm0n checkout no longer
+  links that folder instead of downloading the release.
 - Completing a comma-separated `--sections` list in bash and fish keeps the items
   already typed (`cpu,me` → `cpu,memory`).
 - The setup checklist accepts arrow keys from terminals in application cursor mode.
-- Home-folder paths in setup are shortened to `~` without a regular expression, so a
-  `$HOME` containing special characters displays correctly.
+- Setup shortens home-folder paths to `~` correctly even when `$HOME` contains
+  special characters.
+- The README now documents `--interval`, `--sections` and `--no-color`.
 
 ### Changed
 
-- Installer: checkout detection rewritten so older ShellCheck releases lint it cleanly (no behavior change).
+- `install.sh --uninstall` also removes the zsh completion.
+- The installer's checkout detection was rewritten so older ShellCheck releases lint
+  it cleanly.
 
 ## [0.1.0] - 2026-10-18
 
