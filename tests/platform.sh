@@ -51,6 +51,8 @@ shared=("$root/g3rm0n" "$root/install.sh" "$root"/lib/*.sh "$root/completions/g3
 out=$(LC_ALL=C grep -nE '\$[A-Za-z_][A-Za-z0-9_]*[^ -~[:space:]]' "${code[@]}")
 check "portable: no \$name directly followed by a non-ASCII character" test -z "$out"
 # GNU-only or BSD-only flags belong in a backend, never in shared code
+# (comments, and the /proc/$PPID/comm probe that falls back to ps, are fine)
+# shellcheck disable=SC2016  # a literal $PPID in the pattern
 out=$(grep -nE '(date -d|date -j|stat -c|stat -f|readlink -f|sed -i|df -B|--output=|--sort=|nproc|/proc/|/sys/)' "${shared[@]}" \
       | grep -vE '^\S+:[0-9]+:\s*#|/proc/\$PPID/comm' )
 check "portable: no OS-specific commands in shared code" test -z "$out"

@@ -149,7 +149,8 @@ if has_shell fish; then
   fish_complete() { fish -c "source '$root/completions/g3rm0n.fish'; complete -C '$1'" 2>&1 | cut -f1; }
   check "fish completion: subcommands" bash -c "grep -qx setup <<<\"\$1\"" _ "$(fish_complete 'g3rm0n se')"
   check "fish completion: setup options" bash -c "grep -qx -- --defaults <<<\"\$1\"" _ "$(fish_complete 'g3rm0n setup --')"
-  check "fish completion: keeps earlier list items" bash -c "grep -qx cpu,memory <<<\"\$1\"" _ "$(fish_complete 'g3rm0n -s cpu,me')"
+  out=$(fish_complete 'g3rm0n -s cpu,me'; fish --version)
+  check "fish completion: keeps earlier list items" bash -c "grep -qx cpu,memory <<<\"\$1\"" _ "$out"
 else
   skipped "fish completions"
 fi
