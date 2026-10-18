@@ -8,6 +8,13 @@ All notable changes to g3rm0n are documented here. The format follows
 
 ### Fixed
 
+- Clicking anywhere other than a panel title (a panel's rows, the gap between
+  columns, empty space) quit the dashboard. Such clicks are now ignored; only a
+  title click folds, and only `q` or Ctrl-C quits.
+- Updating g3rm0n while it was running (reinstalling, or a `git pull` in a linked
+  checkout) could print `syntax error near unexpected token` when it exited,
+  because bash went on reading the changed file. g3rm0n now exits without reading
+  any further.
 - The macOS installer's "Using bash …" line no longer runs the version into the path.
 
 ## [0.1.3] - 2026-10-18

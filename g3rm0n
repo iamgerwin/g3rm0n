@@ -119,4 +119,7 @@ main() {
   dash_run "$once" "$interval" "$fold"
 }
 
-main "$@"
+# "exit" on the same line: bash reads a script while running it, so if this file is
+# replaced or edited while g3rm0n runs (an update, a git pull), nothing after main
+# may ever be read from the new contents.
+main "$@"; exit

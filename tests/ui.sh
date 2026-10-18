@@ -35,7 +35,7 @@ echo "g3rm0n interaction tests"
 
 # ---- 1. unit checks ---------------------------------------------------------------
 # shellcheck source=/dev/null
-for m in core ui panel fold input keymap; do source "$root/lib/$m.sh"; done
+for m in core ui panel fold input keymap dashboard; do source "$root/lib/$m.sh"; done
 g3_colors
 
 ev() { in_decode "$1"; printf '%s' "$IN_EVENT"; }
@@ -117,6 +117,22 @@ check "grid: next panel follows the fold" is "${OUT[2]}" "$(ui_title "◫" Memor
 fold_set cpu 0; OUT=(); panel_compose 0 100
 check "grid: one-shot output has no markers" lacks "${OUT[*]}" "▾"
 
+# dispatch: only "quit" ends the dashboard; a click that hits no title does nothing
+fold_set cpu 0; OUT=(); panel_compose 1 100
+survives() { # IN_EVENT -> true when the event leaves the dashboard running
+  DASH_QUIT=0 IN_EVENT=$1
+  dash_event || return 1
+  (( DASH_QUIT == 0 ))
+}
+quits() { DASH_QUIT=0 IN_EVENT=$1; dash_event; (( DASH_QUIT == 1 )); }
+check "dispatch: q quits"                         quits "key q"
+for e in "click 3 2" "click 3 5" "click 47 1" "click 99 1" "click 3 999" "click 0 0" "wheel up" "wheel down" "none" "key x" "key enter"; do
+  check "dispatch: '$e' keeps the dashboard running" survives "$e"
+done
+FOLD=(); survives "click 3 1"
+check "dispatch: a click on a title folds it"     fold_is cpu
+fold_set cpu 0
+
 # ---- 2. the live dashboard in a pseudo-terminal ---------------------------------------
 if ! command -v script >/dev/null 2>&1; then
   skip=$(( skip + 1 )); printf '  skip  live dashboard: script(1) not installed\n'
@@ -149,8 +165,32 @@ else
   out=$(live "" q)
   check "live: mouse = off in config"         lacks "$out" $'\e[?1000h'
   rm -f "$XDG_CONFIG_HOME/g3rm0n/config"
+  # clicks beside the titles (a body row, the gap, empty space, past the panels),
+  # right clicks and the wheel are ignored; the dashboard keeps going until "2" and "q"
+  rm -f "$state"
+  out=$(live "" '\e[<0;10;6M\e[<0;10;6m' '\e[<0;47;3M' '\e[<0;60;45M' '\e[<0;200;200M' \
+                '\e[<2;5;3M' '\e[<64;5;8M' '\e[<65;5;8M' 2 q)
+  check "live: clicks off the titles don't quit"  contains "$out" "▸ ◫ Memory"
+  check "live: ... nor fold anything"             is "$(cat "$state")" "memory"
   out=$(live "" '\x03')
   check "live: Ctrl-C restores the terminal"  contains "$out" $'\e[?1000l\e[?1049l'
+fi
+
+# ---- updating g3rm0n while it runs -------------------------------------------------------
+check "update while running: g3rm0n ends with main and exit on one line" test "$(tail -n 1 "$root/g3rm0n")" = 'main "$@"; exit'
+# bash reads a script as it runs it; an update or git pull that rewrites g3rm0n in place
+# must not make the running copy parse the new file when it exits
+if command -v script >/dev/null 2>&1; then
+  mkdir -p "$tmp/live"; cp -R "$root/g3rm0n" "$root/lib" "$tmp/live/"
+  out=$( { sleep 1.2
+           # rewrite the running file in place (same inode), longer than before
+           { printf '#!/usr/bin/env bash\n'; for _ in $(seq 1 40); do printf '# padding %s\n' "$(printf 'x%.0s' $(seq 1 60))"; done
+             tail -n +2 "$root/g3rm0n"; } >"$tmp/live/g3rm0n.new"
+           cat "$tmp/live/g3rm0n.new" >"$tmp/live/g3rm0n"
+           sleep 0.5; printf q; sleep 0.5; } \
+         | pty_run bash "stty cols 100 rows 50; '$tmp/live/g3rm0n' --no-ai -i 30; echo EXIT=\$?" 2>&1)
+  check "update while running: exits cleanly"     contains "$out" "EXIT=0"
+  check "update while running: no parse errors"   bash -c "! grep -qiE 'syntax error|command not found|unexpected' <<<\"\$1\"" _ "$out"
 fi
 
 # ---- one-shot output with --fold -------------------------------------------------------

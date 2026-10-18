@@ -37,7 +37,10 @@ tarballs carry no dev files, and that the installer works under bash 3.2 (CI's m
 `tests/ui.sh` unit-tests the pure pieces of the interactive dashboard (input
 decoding, key bindings, fold state, titles, layout and hit-testing) and then drives
 the live dashboard in a pseudo-terminal with real key presses and SGR mouse clicks.
-Any change to input, keys, folding or panel layout needs a case there.
+Any change to input, keys, folding or panel layout needs a case there. It also
+checks that only `q` quits (every other key, click, wheel event and miss is
+harmless), and that rewriting `g3rm0n` while it runs never produces a parse error
+on exit.
 
 `tests/docs.sh` is the documentation drift check described in
 [documentation](08-documentation.md); the pre-commit hook runs it with `--staged`.
