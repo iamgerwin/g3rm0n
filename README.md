@@ -129,7 +129,7 @@ Other ways:
 
 ```bash
 # a specific version
-curl -fsSL https://raw.githubusercontent.com/iamgerwin/g3rm0n/main/install.sh | bash -s -- --version 0.1.4
+curl -fsSL https://raw.githubusercontent.com/iamgerwin/g3rm0n/main/install.sh | bash -s -- --version 0.1.5
 
 # offline, from an unpacked release (or a clone), copying only the run-time files
 ./install.sh --from ~/Downloads/g3rm0n
