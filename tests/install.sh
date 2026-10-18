@@ -98,6 +98,17 @@ else
   skipped "bash 3.2 checks: no bash 3.2 here (set G3_TEST_BASH32 to one)"
 fi
 
+# ---- finding the latest release (mock curl, no network) -----------------------------------------
+latest() { # G3_MOCK_GITHUB mode -> what install.sh's latest_version answers
+  G3_MOCK_GITHUB=$1 PATH="$root/tests/mock:$PATH" bash -c 'REPO=iamgerwin/g3rm0n
+    eval "$(sed -n "/^latest_version()/,/^}/p" "$1")"; latest_version' _ "$root/install.sh"
+}
+check "latest release: from the releases/latest redirect" test "$(latest ok)" = 9.8.7
+check "latest release: API fallback when there's no redirect" test "$(latest noredirect)" = 9.8.6
+check "latest release: nothing when GitHub is unreachable" test -z "$(latest down)"
+out=$("${clean[@]}" G3_MOCK_GITHUB=down "PATH=$root/tests/mock:$ipath" bash -s <"$root/install.sh" 2>&1)
+check "latest release: a clear message when it can't be found" contains "$out" "pick one with --version"
+
 # ---- uninstall --------------------------------------------------------------------------------
 "${clean[@]}" bash "$root/install.sh" --uninstall >/dev/null 2>&1
 check "uninstall removes the program and its files" bash -c "[[ ! -e '$h/.local/bin/g3rm0n' && ! -e '$share' ]]"

@@ -73,6 +73,20 @@ runtime_files() { # platform
   for f in "$SRC_TREE"/lib/*.sh; do printf 'lib/%s\n' "${f##*/}"; done
 }
 
+latest_version() { # -> the newest release's version, e.g. 0.1.4
+  local url v=""
+  # the releases/latest page redirects to .../releases/tag/vX.Y.Z; unlike the API it
+  # has no per-IP rate limit, which shared networks and CI machines run into
+  url=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$REPO/releases/latest" 2>/dev/null) || url=""
+  [[ $url == */releases/tag/* ]] && v=${url##*/tag/}
+  if [[ -z $v ]]; then
+    v=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null \
+      | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n1)
+  fi
+  v=${v#v}
+  [[ $v =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && printf '%s' "$v"
+}
+
 install_runtime() { # source-tree platform -> SHARE_DIR holds exactly the run-time files
   local tree=$1 plat=$2 stage f
   SRC_TREE=$tree
@@ -169,9 +183,8 @@ elif [[ -z $version && -n $here && -f $here/g3rm0n && -f $here/lib/core.sh ]]; t
 else
   command -v curl >/dev/null || fail "curl is required"
   if [[ -z $version ]]; then
-    version=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" \
-      | sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p' | head -n1)
-    [[ -n $version ]] || fail "could not find the latest release"
+    version=$(latest_version) || version=""   # report it below, not via set -e
+    [[ -n $version ]] || fail "could not find the latest release; pick one with --version (see https://github.com/$REPO/releases)"
   fi
   version=${version#v}
   say "Downloading g3rm0n v$version"
