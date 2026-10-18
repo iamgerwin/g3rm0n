@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # core.sh — version, paths, colors, config and small shared helpers
 
-G3_VERSION="0.1.6"
+G3_VERSION="0.1.7"
 G3_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/g3rm0n"
 G3_CONFIG_FILE="$G3_CONFIG_DIR/config"
 G3_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/g3rm0n"

@@ -3,7 +3,7 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/iamgerwin/g3rm0n/main/install.sh | bash
 #   ./install.sh                 from a git checkout: links the checkout (live-editable)
-#   ./install.sh --version 0.1.6 install a specific release
+#   ./install.sh --version 0.1.7 install a specific release
 #   ./install.sh --from DIR      install from an unpacked release or checkout, offline
 #   ./install.sh --uninstall     remove g3rm0n (your config is kept)
 #
@@ -41,7 +41,7 @@ Install g3rm0n for the current user, on Linux or macOS (no root needed).
 
   curl -fsSL https://raw.githubusercontent.com/iamgerwin/g3rm0n/main/install.sh | bash
   ./install.sh                 from a git checkout: links the checkout (live-editable)
-  ./install.sh --version 0.1.6 install a specific release
+  ./install.sh --version 0.1.7 install a specific release
   ./install.sh --from DIR      install from an unpacked release or checkout, offline
   ./install.sh --uninstall     remove g3rm0n (your config is kept)
 USAGE
