@@ -21,8 +21,13 @@ g3rm0n sits next to credentials for paid services. These rules are not optional.
   command-line arguments, which any local user can read in `ps`.
 - Make read-only `GET` requests to usage and balance endpoints only. Never call
   endpoints that change an account, spend money or refresh/rotate a token.
-- Respect rate limits: at most one call per provider per `AI_TTL`, and back off
-  after an HTTP 429.
+- Respect rate limits. A provider is called at most once per `ai_ttl` (60 s, or longer
+  for strict endpoints in `AI_REFRESH`: Claude 300 s), by one g3rm0n at a time (the
+  `<id>.lock` in the cache). After an HTTP 429, wait for `Retry-After` or back off
+  exponentially (`ai_backoff`, up to an hour); the next attempt is shared through
+  `<id>.status`, so every running copy waits together.
+- Prefer the last good reading to an error: keep cached numbers on screen and say how
+  old they are, rather than replacing them with a failure state.
 - Network calls run in the background in live mode and never block a frame.
 - `--no-ai` must guarantee zero network traffic.
 

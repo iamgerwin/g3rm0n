@@ -37,6 +37,12 @@ rate-limited GitHub API (with a clear message when it can't be), and that the
 installer works under bash 3.2 (CI's macOS
 `/bin/bash`; locally, point `G3_TEST_BASH32` at one).
 
+`tests/ai.sh` covers the AI refresh policy with the mock `curl` and its request log:
+intervals and `<provider>.refresh`, backoff and `Retry-After`, the cross-process
+lock (several copies at once make one call), legacy status files, what panels show
+while rate limited or offline, and windows that reset while waiting. Any change to
+how or how often a provider is called needs a case there.
+
 `tests/ui.sh` unit-tests the pure pieces of the interactive dashboard (input
 decoding, key bindings, fold state, titles, layout and hit-testing) and then drives
 the live dashboard in a pseudo-terminal with real key presses and SGR mouse clicks.

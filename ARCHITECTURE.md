@@ -125,6 +125,21 @@ contributor docs out of the release tarballs as well. The installer itself stays
 compatible with bash 3.2, because on macOS `curl … | bash` runs the system bash.
 `tests/install.sh` checks all of this.
 
+## AI refresh policy
+
+Each provider's usage is fetched in the background by `ai_refresh` and cached as one
+row of numbers (`<id>.row`). Frames only ever read the cache.
+
+- **How often:** `ai_ttl` gives 60 s by default, a longer per-provider default from
+  `AI_REFRESH` (Claude 300 s), or `<id>.refresh` from the config.
+- **Shared:** `<id>.status` holds `code next-attempt consecutive-429s`. Every running
+  g3rm0n reads it, and `<id>.lock` lets only one of them call the provider.
+- **After a 429:** `ai_backoff` waits `Retry-After` when the server asks for longer,
+  otherwise 5, 10, 20 … up to 60 minutes. Any success resets it.
+- **Meanwhile:** the panel keeps the last good row and says how old it is and when the
+  next try is. A window whose reset time has passed is shown as a new, empty window,
+  marked `~` as an estimate.
+
 ## The live loop
 
 ```

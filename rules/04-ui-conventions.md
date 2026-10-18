@@ -79,5 +79,8 @@ show money that runs down. Never mix the two shapes.
 
 - AI panel titles read `AI Tokens · <Provider>` or `AI Credits · <Provider>`.
 - States use one word followed by a hint: `expired · run claude to sign in again`,
-  `rejected · check DEEPSEEK_API_KEY`, `rate limited · retrying in 5m`.
+  `rejected · check DEEPSEEK_API_KEY`, `rate limited · retrying in 30m`.
+- Numbers that aren't fresh keep their place and say so: `12m ago · retry 4m` at the end
+  of the last row (tokens) or as a `Status` last row (credits). An estimated value is
+  marked `~`.
 - When an API doesn't report a value, say `not reported by this API`. Never show `0`.

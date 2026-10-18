@@ -85,7 +85,7 @@ can get, instead of asking for `sudo`:
 | Reading | Linux | macOS |
 |---------|-------|-------|
 | `Cores` row | activity of each core | core layout, e.g. `8 performance · 4 efficiency` |
-| `Temp` row | hottest sensor | `no sensors exposed` (sensors need root via `powermetrics`) |
+| `Temp` row | the hottest CPU sensor (`coretemp`, `k10temp`, …), else the hottest sensor | the hottest CPU sensor on Apple silicon (IOKit, as iStat Menus reads it); `no sensors exposed` on Intel Macs |
 | `GPU` row | NVIDIA or AMD usage, memory, temperature | Apple GPU usage |
 | `Used` memory | total minus available | app memory + wired + compressed, as Activity Monitor counts it |
 | Disk `~` row | your home partition, when it's separate | the data volume, where your files live (also what the folded Disk title and the health score watch) |
@@ -164,6 +164,7 @@ g3rm0n -i 5               refresh every 5 seconds
 g3rm0n -s cpu,memory      show only some sections for this run
 g3rm0n --no-ai            system panels only, no network calls at all
 g3rm0n setup              choose what the dashboard shows
+g3rm0n sensors            list the temperature sensors it can read, and which one Temp shows
 g3rm0n version            print the version
 g3rm0n help               all options
 ```
@@ -279,8 +280,10 @@ dashboard keeps working.
   command-line arguments.
 - **Only the numbers are cached.** `~/.cache/g3rm0n/ai` (mode 700) holds usage figures
   and status codes, never responses or tokens.
-- **Calls are gentle.** Each provider is called at most once a minute, with a longer
-  back-off after a rate limit.
+- **Calls are gentle.** Claude is asked at most every 5 minutes and the others every
+  minute (set `<provider>.refresh` to change it). After a rate limit, g3rm0n follows
+  the server's `Retry-After`, or waits 5, 10, 20 and up to 60 minutes. Only one
+  g3rm0n at a time calls a provider, and every open window shares the result.
 - **Only layout is remembered.** `~/.local/state/g3rm0n/folded` lists which panels
   are folded. Nothing else is written outside the cache. (On macOS, the cache also
   holds a short-lived CPU measurement while g3rm0n runs, removed when it exits.)
@@ -310,6 +313,7 @@ openrouter.credentials = env:OPENROUTER_API_KEY
 | `providers` | AI providers to show: `auto` (every one detected), a list, or `none` |
 | `<provider>.credentials` | Where that provider's credential lives: `file:<path>`, `env:<VARIABLE>` or (macOS) `keychain:<service>` |
 | `mouse` | `on` (default) lets you click titles to fold; `off` leaves the mouse to the terminal |
+| `<provider>.refresh` | Seconds between calls to that provider, e.g. `claude.refresh = 600` (default 300 for Claude, 60 for the others; never below 60) |
 
 | Environment variable | Effect |
 |----------------------|--------|
@@ -325,14 +329,16 @@ openrouter.credentials = env:OPENROUTER_API_KEY
 | macOS asks whether `security` may use "Claude Code-credentials" | That's g3rm0n reading Claude Code's login for the Claude panel. Choose **Always Allow**, or **Deny** to hide the panel |
 | Only one column, or the bottom cut off, in a big window | Fixed in 0.1.5: g3rm0n now asks the terminal for its size instead of `tput`, whose macOS version always reported 80×24 |
 | `Key rejected · check DEEPSEEK_API_KEY` | The key is wrong or revoked. Export a valid one |
-| `rate limited · retrying in 5m` | The provider is throttling. g3rm0n backs off by itself |
-| `stale 7m` | The last refresh failed; the numbers shown are from the last success |
+| `12m ago · retry 4m` | The provider rate-limited g3rm0n. The numbers shown are the last good reading, and g3rm0n waits as long as the provider asks before trying again. To ask even less often, raise `claude.refresh` |
+| `rate limited · retrying in 30m` | Rate limited before g3rm0n had any numbers. It waits by itself; nothing to do |
+| `~0%` and `new window` | That window reset while g3rm0n was waiting, so it starts over. It's an estimate until the next reading |
+| `Temp  no sensors exposed` | No readable sensor. Run `g3rm0n sensors` to see what the system returned |
 | No AI panels at all | Install `curl` and `jq`, then run `g3rm0n setup --show` |
 | A provider is missing | Run `g3rm0n setup --show` to see whether its credential was found |
 | Key is set but shows *not found* | It isn't exported. Use `export` (bash/zsh), `set -gx` (fish) or `setenv` (tcsh) |
 | `g3rm0n: command not found` | `~/.local/bin` isn't on your `PATH`; the installer printed the line to add for your shell |
 | `g3rm0n needs bash 5 or newer` (macOS) | `brew install bash`. g3rm0n finds it in `/opt/homebrew/bin` or `/usr/local/bin` by itself |
-| `Temp  no sensors exposed` on a Mac | Expected: macOS only shows temperatures to root |
+| `Temp  no sensors exposed` on a Mac | Expected on Intel Macs and virtual machines. On Apple silicon, run `g3rm0n sensors`: its last line says what macOS returned |
 | Boxes or misaligned bars | Use a UTF-8 locale and a font with box-drawing glyphs |
 | Can't select text with the mouse | Hold Shift (Option on macOS) while dragging, or use `--no-mouse` / `mouse = off` |
 | Clicking a title does nothing | Your terminal isn't sending mouse events (in tmux: `set -g mouse on`). Use the digit keys instead |
