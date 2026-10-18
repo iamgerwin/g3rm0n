@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Blocks a commit when the docs drift from the code, or when code changes arrive
+# without a CHANGELOG.md entry. Enable once per clone:
+#   git config core.hooksPath .githooks
+# Bypass only for a real emergency: git commit --no-verify (CI runs the same check).
+root=$(git rev-parse --show-toplevel) || exit 1
+exec "$root/tests/docs.sh" --staged

@@ -52,4 +52,5 @@ Declare `P_ai_<id>=()` alongside the others in `dash_run` (`lib/dashboard.sh`).
 - Extend `tests/smoke.sh` to render the panel from the mock.
 - Check the panel at 100 columns (paired) and 60 columns (stacked).
 - Check the `401`, `nologin`, `429` and offline states.
-- Update the README's provider table and `CHANGELOG.md`.
+- Update the README's provider table and `CHANGELOG.md`; `tests/docs.sh` fails until
+  the provider and its credential variables are in the README.

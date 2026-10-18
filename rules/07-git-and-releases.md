@@ -25,15 +25,21 @@ g3rm0n follows [Semantic Versioning](https://semver.org/):
 - **MINOR**: new sections, providers, flags or setup options.
 - **PATCH**: fixes and wording that keep all existing behavior.
 
-The version lives in a single place: `G3_VERSION` in `lib/core.sh`.
+The version lives in `G3_VERSION` in `lib/core.sh`, and it is mirrored in
+`CHANGELOG.md` and in the `--version` examples. `scripts/bump-version.sh` changes all
+of them together; `tests/docs.sh` fails if they disagree. Pick the part to bump from
+the `Unreleased` notes: anything under **Removed**, or a breaking **Changed** →
+major; anything under **Added** → minor (while the version is `0.x`, a minor bump is
+optional for small additions that change no existing behavior); otherwise patch.
 
 ## Releasing
 
-1. Update `G3_VERSION` in `lib/core.sh`.
-2. Move the `Unreleased` notes in `CHANGELOG.md` under the new version and date.
+1. Make sure every change since the last release has its entry under `## [Unreleased]`.
+2. On the release branch, run `scripts/bump-version.sh patch|minor|major`. It cuts the
+   dated section, updates the version everywhere and runs the drift check.
 3. Run the full [testing](06-testing.md) checklist.
-4. Commit with `chore(release): vX.Y.Z`.
-5. Create an annotated tag: `git tag -a vX.Y.Z -m "g3rm0n vX.Y.Z"`.
-6. Push the commit and the tag, then publish a GitHub release from the tag, using
-   that version's changelog section as the notes.
+4. Commit with `chore(release): vX.Y.Z`, open the pull request and merge it once CI passes.
+5. On `main`, create an annotated tag: `git tag -a vX.Y.Z -m "g3rm0n vX.Y.Z"`, and push it.
+6. Publish a GitHub release from the tag, titled `g3rm0n vX.Y.Z`, using that version's
+   CHANGELOG section as the notes.
 7. Check the one-line installer against the new release in a clean `HOME`.

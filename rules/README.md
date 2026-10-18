@@ -13,14 +13,16 @@ the code disagree, the rule wins: fix the code or propose a change to the rule.
 | 5 | [Adding an AI provider](05-adding-a-provider.md) | The provider contract, step by step |
 | 6 | [Testing](06-testing.md) | What must pass before a change is merged |
 | 7 | [Git & releases](07-git-and-releases.md) | Branches, commits, versioning, release steps |
+| 8 | [Documentation](08-documentation.md) | The drift check, what to update for each change, changelog style |
 
 ## The short version
 
 1. g3rm0n **only observes**. It never changes the system it runs on.
 2. Credentials are **referenced, never stored**, and only ever sent to their own provider.
 3. Every panel follows the **same layout**: 46 columns wide, a 7-column label column, one fact per row.
-4. `bash -n`, `shellcheck`, `tests/smoke.sh` and `tests/shells.sh` must all pass.
-5. One logical change per commit, written in the imperative mood, authored by the person responsible for it.
+4. `bash -n`, `shellcheck`, `tests/smoke.sh`, `tests/shells.sh` and `tests/docs.sh` must all pass.
+5. Docs change in the same commit as the code they describe, with a `CHANGELOG.md` entry.
+6. One logical change per commit, written in the imperative mood, authored by the person responsible for it.
 
 ## For automated agents
 
