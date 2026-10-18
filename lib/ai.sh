@@ -85,7 +85,15 @@ ai_get() { # url header-lines -> AI_BODY AI_CODE
   [[ $AI_CODE =~ ^[0-9]+$ ]] || AI_CODE=000
 }
 
-ai_epoch() { [[ -n $1 && $1 != null ]] && date -d "$1" +%s 2>/dev/null || printf 0; }
+# ISO 8601 ("2026-10-18T17:00:00.123+00:00", "...Z") -> epoch seconds, in jq so it
+# behaves the same with GNU and BSD date. null or unparsable -> 0.
+# shellcheck disable=SC2016  # jq program: $m is a jq variable
+AI_JQ_EPOCH='def epoch: if type != "string" then 0 else
+  (capture("^(?<d>[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})(\\.[0-9]+)?(?<z>Z|[+-][0-9]{2}:?[0-9]{2})?$")
+   // null) as $m | if $m == null then 0 else
+  (($m.d + "Z") | fromdateiso8601) - (if ($m.z // "Z") == "Z" then 0 else
+    (($m.z[1:3] | tonumber) * 3600 + ($m.z[-2:] | tonumber) * 60) * (if $m.z[0:1] == "-" then -1 else 1 end) end)
+  end end;'
 
 # ---- subscription providers --------------------------------------------------
 
@@ -98,11 +106,10 @@ ai_fetch_claude() {
   [[ $AI_CODE == 200 ]] || return
   plan=$(ai_secret claude '.claudeAiOauth.rateLimitTier // .claudeAiOauth.subscriptionType')
   plan=${plan#default_}; plan=${plan#claude_}; plan=${plan//_/ }
-  IFS=$'\t' read -r p1 r1 p2 r2 < <(jq -r '[(.five_hour.utilization // 0), (.five_hour.resets_at // "null"),
-      (.seven_day.utilization // 0), (.seven_day.resets_at // "null")] | @tsv' <<<"$AI_BODY" 2>/dev/null)
+  IFS=$'\t' read -r p1 r1 p2 r2 < <(jq -r "$AI_JQ_EPOCH"' [(.five_hour.utilization // 0), (.five_hour.resets_at | epoch),
+      (.seven_day.utilization // 0), (.seven_day.resets_at | epoch)] | @tsv' <<<"$AI_BODY" 2>/dev/null)
   [[ -n $p1 ]] || { AI_CODE=bad; return; }
-  printf -v AI_ROW '%s\t%s\t%s\t%s\t%s\t%s\t%s' "${plan:-?}" "$p1" 18000 "$(ai_epoch "$r1")" \
-    "$p2" 604800 "$(ai_epoch "$r2")"
+  printf -v AI_ROW '%s\t%s\t%s\t%s\t%s\t%s\t%s' "${plan:-?}" "$p1" 18000 "$r1" "$p2" 604800 "$r2"
 }
 ai_hint_claude() { printf 'run claude to sign in again'; }
 
@@ -191,7 +198,7 @@ ai_stale() { # id -> true when the last attempt is older than AI_TTL (5x after a
   [[ -e $f ]] || return 0
   read -r code <"$f" 2>/dev/null
   [[ $code == 429 ]] && ttl=$(( AI_TTL * 5 ))
-  t=$(stat -c %Y "$f" 2>/dev/null || echo 0)
+  t=$(plat_mtime "$f"); t=${t:-0}
   (( EPOCHSECONDS - t >= ttl ))
 }
 
@@ -260,7 +267,7 @@ ai_panel() { # id -> PANEL_BODY + PANEL_SUM in the standard layout for its kind 
     return
   fi
   local age stale=""
-  age=$(( EPOCHSECONDS - $(stat -c %Y "$AI_DIR/$id.row" 2>/dev/null || echo "$EPOCHSECONDS") ))
+  age=$(plat_mtime "$AI_DIR/$id.row"); age=$(( EPOCHSECONDS - ${age:-$EPOCHSECONDS} ))
   (( age > AI_TTL * 5 )) && stale="${c_yellow}· stale $(( age / 60 ))m${c_off}"
   "ai_body_$kind" "$id"
 }

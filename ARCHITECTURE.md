@@ -11,19 +11,21 @@ talks to the others through a few documented globals and function contracts.
 
 ```
 g3rm0n ──► lib/core.sh ──► lib/ui.sh ──► lib/panel.sh ──► lib/fold.sh ──► lib/input.sh ──► lib/keymap.sh
-           (load order)    lib/system.sh ──► lib/ai.sh ──► lib/dashboard.sh ──► lib/setup.sh
+(load order) ──► lib/platform/<os>.sh ──► lib/system.sh ──► lib/ai.sh ──► lib/dashboard.sh ──► lib/setup.sh
 ```
 
 | Module | Role | Owns |
 |--------|------|------|
-| `g3rm0n` | Entry point | Shell guard, argument parsing, dispatch to dashboard or setup |
+| `g3rm0n` | Entry point | Finding bash 5, choosing the platform backend, argument parsing, dispatch to dashboard or setup |
 | `lib/core.sh` | Foundation | Version, paths (config, cache, state), sections, colors, config parsing, formatting helpers |
 | `lib/ui.sh` | View primitives | Titles, bars, sparklines, padding, the two-column grid and its hit map (`UI_HITS`) |
 | `lib/panel.sh` | Panel registry and composition | `panel_register`, `panel_render_all` (sample step), `panel_compose` (render step), `panel_at` (hit-testing) |
 | `lib/fold.sh` | Fold state (model) | `FOLD` map, toggles and groups, `--fold` lists, persistence in `$G3_STATE_DIR/folded` |
 | `lib/input.sh` | Input adapter | Raw terminal bytes in, normalized events out (`key`, `click`, `wheel`, `none`); mouse on/off |
 | `lib/keymap.sh` | Key bindings (data) | `KEYMAP` (key → action) and `KEYMAP_HELP` (what help and the README show) |
-| `lib/system.sh` | System model and renderers | `/proc` and `/sys` sampling, health score, the six system panel renderers |
+| `lib/platform/linux.sh` | Linux backend | The platform contract, from `/proc`, `/sys`, `df`, `ps`, `ip` |
+| `lib/platform/darwin.sh` | macOS backend | The platform contract, from `sysctl`, `vm_stat`, `iostat`, `netstat`, `ioreg`, `pmset`, `df`, `ps`, `route` |
+| `lib/system.sh` | System model and renderers | Rates from the backend's counters, the health score, the six system panel renderers, `SYS_CONTRACT` |
 | `lib/ai.sh` | AI model and renderers | Provider fetchers, cache and background refresh, the AI panel renderer |
 | `lib/dashboard.sh` | Controller | Panel registration, the live loop, event → action dispatch (`dash_do`), terminal restore |
 | `lib/setup.sh` | Setup flow | `g3rm0n setup`: the checklist UI and writing the config |
@@ -59,6 +61,60 @@ check makes sure the README lists it. Unbound keys refresh, as they always have.
 parsed with a whitelist (never sourced). The config is parsed the same way. Neither
 holds anything but layout and preferences.
 
+**Strategy (platforms).** Everything that depends on the operating system sits behind
+the platform contract below. `g3rm0n` loads exactly one backend
+(`lib/platform/<os>.sh`) and the rest of the program never asks which one it got.
+`sys_static` refuses to start with a backend that doesn't define the whole contract,
+and `tests/platform.sh` checks every backend file against it.
+
+## Platforms
+
+A backend is a file of `plat_` functions that fill globals. Shared code turns those
+into rates, panels and the health score, so features can't differ between platforms.
+
+| Function | Fills | Linux | macOS |
+|----------|-------|-------|-------|
+| `plat_static` | `S_OS` `S_MODEL` `S_THREADS` `S_GPU` (once) | os-release, cpuinfo, `nproc` | `sw_vers`, `sysctl` |
+| `plat_cpu` | `S_CPU` (0–100), `S_CORES` (the Cores row) | `/proc/stat` deltas, per-core strip | background 1 s `iostat`, core layout |
+| `plat_load` | `S_L1` `S_L5` `S_L15` `S_TASKS` | `/proc/loadavg` | `sysctl vm.loadavg`, `ps` |
+| `plat_mem` | `S_MEM_T` `S_MEM_A` `S_CACHE` `S_SWAP_T` `S_SWAP_F` (bytes) | `/proc/meminfo` | `vm_stat`, `sysctl` |
+| `plat_net_bytes` | `NET_RX` `NET_TX` (cumulative bytes) | `/proc/net/dev` | `netstat -ibn` |
+| `plat_disk_bytes` | `DIO_R` `DIO_W` (cumulative bytes) | `/proc/diskstats` | `ioreg` block storage statistics |
+| `plat_temp` | prints °C, or nothing | thermal zones, hwmon | nothing (root only) |
+| `plat_uptime` | `S_UP` (seconds) | `/proc/uptime` | `sysctl kern.boottime` |
+| `plat_root_pct` | `S_ROOT_P` (for the health score) | `df /` | `df` of the data volume |
+| `plat_disks` | prints `mount fstype size used pct` rows | `df -B1 --output` | `df -kP`, `mount` |
+| `plat_battery` | `BAT_CAP` `BAT_STATUS` `BAT_AC` | `/sys/class/power_supply` | `pmset -g batt` |
+| `plat_gpu` | `GPU_UTIL` [`GPU_MEM_U` `GPU_MEM_T` `GPU_TEMP`] | `nvidia-smi`, AMD sysfs | `ioreg` IOAccelerator |
+| `plat_top` | prints `pcpu rss_kb name`, busiest first | `ps --sort` | `ps -r -c` |
+| `plat_link` | `LINK_DEV` `LINK_ADDR` | `ip route get` | `route get default`, `ipconfig` |
+| `plat_vpn` | `VPN_DEV` `VPN_ADDR` | wg/tun/tailscale/ppp interfaces | tunnels with an IPv4 address (`ifconfig`) |
+| `plat_mtime` | prints a file's modification time | `stat -c %Y` | `stat -f %m` |
+| `plat_cleanup` | stops background work, removes its files | nothing to do | stops the CPU measurement |
+
+Rules for backends:
+
+- Read-only, no root, stock tools of that OS only. If a reading needs root, return
+  the closest unprivileged equivalent (and say so in the README platform table).
+- Never block a frame. Anything that needs a time window runs in the background
+  between frames, like the macOS CPU measurement.
+- Shared code stays portable: no GNU-only or BSD-only flags outside `lib/platform/`.
+  `tests/platform.sh` runs the macOS backend against recorded macOS output
+  (`tests/mock/darwin/`) on every machine, and CI runs every suite natively on Linux
+  and macOS.
+- A new OS (Windows is next) is one new file plus a case in `g3rm0n`'s platform
+  switch and `install.sh`'s `platform`.
+
+## Installation
+
+`install.sh` copies only the run-time files (`runtime_files`): `g3rm0n`, `lib/*.sh`,
+the one backend for the installing OS, the three completions and `LICENSE`. It stages
+them next to the install folder and swaps them in, so an update never leaves files
+from an older layout behind. `.gitattributes` keeps tests, rules, CI, scripts and the
+contributor docs out of the release tarballs as well. The installer itself stays
+compatible with bash 3.2, because on macOS `curl … | bash` runs the system bash.
+`tests/install.sh` checks all of this.
+
 ## The live loop
 
 ```
@@ -86,7 +142,8 @@ existed.
 
 | To add | Touch |
 |--------|-------|
-| A system panel | a renderer in `lib/system.sh`, its icon/title in `SYS_ICON`/`SYS_TITLE`, the section in `G3_SECTIONS` (`lib/core.sh`), the docs |
+| A system panel | a renderer in `lib/system.sh`, its icon/title in `SYS_ICON`/`SYS_TITLE`, the section in `G3_SECTIONS` (`lib/core.sh`), any new reading as a `plat_` function in every backend, the docs |
+| A platform | `lib/platform/<os>.sh` with the whole contract, the platform switch in `g3rm0n` and `install.sh`, fixtures in `tests/mock/<os>/`, a CI runner, the README platforms table |
 | An AI provider | `lib/ai.sh` only ([rules/05](rules/05-adding-a-provider.md)); it registers itself through `dash_register` |
 | A key binding | `KEYMAP` and `KEYMAP_HELP` in `lib/keymap.sh`, an action in `dash_do` if it's new, the README keys table |
 | A mouse gesture | `in_decode` (new event), `dash_event` (event → action) |

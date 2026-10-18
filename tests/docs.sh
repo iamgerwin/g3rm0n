@@ -100,7 +100,7 @@ for key in "${!CFG[@]}"; do
 done
 
 # ---- architecture: every module is documented ---------------------------------------
-for m in lib/*.sh; do
+for m in lib/*.sh lib/platform/*.sh; do
   check "$m missing from ARCHITECTURE.md" in_file ARCHITECTURE.md "$m"
   check "$m missing from the layout in rules/02-code-style.md" in_file rules/02-code-style.md "$m"
 done
@@ -118,6 +118,13 @@ check "AGENTS.md must point to ARCHITECTURE.md" in_file AGENTS.md "ARCHITECTURE.
 check "CLAUDE.md must import AGENTS.md" in_file CLAUDE.md "@AGENTS.md"
 check "AGENTS.md must name the docs check" in_file AGENTS.md "tests/docs.sh"
 check ".githooks/pre-commit must run the docs check" in_file .githooks/pre-commit "tests/docs.sh"
+for b in lib/platform/*.sh; do
+  b=${b##*/}; b=${b%.sh}
+  check "platform '$b' missing from the README platforms table" grep -qE "^\| [^|]+ \| [\`]${b}[\`] \|" README.md
+done
+# shellcheck disable=SC2016  # expanded by the inner bash
+check "the platform contract in ARCHITECTURE.md must list every plat_ function" \
+  bash -c 'source lib/system.sh 2>/dev/null; for f in "${SYS_CONTRACT[@]}"; do grep -qF "\`$f\`" ARCHITECTURE.md || exit 1; done' 
 
 # ---- what changed: code changes need a changelog entry -----------------------------
 if [[ -n $mode ]]; then

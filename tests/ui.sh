@@ -8,6 +8,8 @@
 set -uo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+# shellcheck source=tests/lib/common.sh
+source "$root/tests/lib/common.sh"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
@@ -122,7 +124,7 @@ else
   live() { # "args" key... : run the live dashboard at 100x50 and type the keys
     local args=$1; shift
     { sleep 1.2; local k; for k in "$@"; do printf '%b' "$k"; sleep 0.5; done; sleep 0.3; } \
-      | script -qfec "stty cols 100 rows 50; '$root/g3rm0n' --no-ai -i 30 $args" /dev/null 2>&1
+      | pty_run bash "stty cols 100 rows 50; '$root/g3rm0n' --no-ai -i 30 $args" 2>&1
   }
   rm -f "$state"
   # row 3 is the first panel title (header + blank line); column 5 is inside it
@@ -154,7 +156,7 @@ fi
 # ---- one-shot output with --fold -------------------------------------------------------
 out=$("$root/g3rm0n" --once --no-ai --fold all 2>&1)
 # folded titles can sit in either column, depending on the width the runner reports
-check "once: --fold all leaves one line per panel" bash -c "[[ \$(grep -o '▸ ' <<<\"\$1\" | wc -l) == 6 ]] && ! grep -q 'Usage' <<<\"\$1\"" _ "$out"
+check "once: --fold all leaves one line per panel" bash -c "(( \$(grep -o '▸ ' <<<\"\$1\" | wc -l) == 6 )) && ! grep -q 'Usage' <<<\"\$1\"" _ "$out"
 out=$("$root/g3rm0n" --once --no-ai -f memory 2>&1)
 check "once: -f folds one section"          bash -c "grep -q '▸ ◫ Memory · ' <<<\"\$1\" && grep -q '^Usage' <<<\"\$1\"" _ "$out"
 out=$("$root/g3rm0n" --once --no-ai 2>&1)

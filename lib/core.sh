@@ -67,7 +67,8 @@ g3_tilde() { # "$HOME/x" -> "~/x" (display only)
 # Used only to phrase hints in that shell's own syntax.
 g3_user_shell() {
   local s=""
-  [[ -r /proc/$PPID/comm ]] && read -r s </proc/$PPID/comm
+  if [[ -r /proc/$PPID/comm ]]; then read -r s </proc/$PPID/comm
+  else s=$(ps -o comm= -p "$PPID" 2>/dev/null); s=${s##*/}; fi   # macOS: no /proc
   s=${s#-}
   case $s in
     bash|zsh|fish|ksh|mksh|ksh93|dash|sh|tcsh|csh|nu|xonsh|elvish) printf '%s' "$s" ;;

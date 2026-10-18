@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+cat <<'OUT'
+Mach Virtual Memory Statistics: (page size of 16384 bytes)
+Pages free:                               20000.
+Pages active:                            300000.
+Pages inactive:                          290000.
+Pages speculative:                        10000.
+Pages throttled:                              0.
+Pages wired down:                        150000.
+Pages purgeable:                          20000.
+"Translation faults":                 123456789.
+Pages copy-on-write:                    1234567.
+Pages zero filled:                     12345678.
+Pages reactivated:                       123456.
+Pages purged:                             12345.
+File-backed pages:                       250000.
+Anonymous pages:                         350000.
+Pages stored in compressor:              200000.
+Pages occupied by compressor:             60000.
+Decompressions:                          100000.
+Compressions:                            200000.
+Pageins:                                 300000.
+Pageouts:                                  1000.
+Swapins:                                      0.
+Swapouts:                                     0.
+OUT

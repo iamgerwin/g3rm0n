@@ -39,6 +39,9 @@ g3rm0n sits next to credentials for paid services. These rules are not optional.
   ID, email address or token; replace those fields with obvious placeholders.
 - The only file the dashboard writes outside the cache is `$G3_STATE_DIR/folded`
   (panel ids). Keep it that way: no usage numbers, no account data, no credentials.
+- Platform backends run unprivileged, stock tools only, and never ask for `sudo`.
+  Background measurements (macOS CPU) write numbers only, to the cache, and are
+  removed on exit by `plat_cleanup`.
 - Use the mock in `tests/mock/curl` for provider tests. Tests must never need real keys.
 
 ## Reporting a vulnerability

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+cat <<'OUT'
+lo0: flags=8049<UP,LOOPBACK,RUNNING,MULTICAST> mtu 16384
+	inet 127.0.0.1 netmask 0xff000000
+en0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500
+	inet 192.168.1.24 netmask 0xffffff00 broadcast 192.168.1.255
+utun0: flags=8051<UP,POINTOPOINT,RUNNING,MULTICAST> mtu 1380
+	inet6 fe80::1%utun0 prefixlen 64 scopeid 0x10
+utun4: flags=8051<UP,POINTOPOINT,RUNNING,MULTICAST> mtu 1280
+	inet 100.101.1.7 --> 100.101.1.7 netmask 0xffffffff
+OUT

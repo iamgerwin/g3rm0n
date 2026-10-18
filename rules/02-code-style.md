@@ -7,11 +7,20 @@
   ksh, tcsh, …). Never assume the user's shell is bash: anything shown to the user
   that they would type (exporting a key, editing `PATH`) goes through
   `g3_export_hint` or the installer's `path_hint`, which phrase it for their shell.
-- The POSIX guard at the top of `g3rm0n` and `install.sh` must stay POSIX `sh`, so
-  `sh g3rm0n` and `curl … | sh` fail politely instead of with syntax errors.
-- Linux only: read `/proc` and `/sys` directly instead of spawning tools when practical.
-- GNU coreutils are fine (`df --output`, `stat -c`, `date -d`). Anything else must be
-  optional and checked with `have <cmd>` before use.
+- The guard at the top of `g3rm0n` and `install.sh` must stay POSIX `sh` (and
+  zsh-safe: no unquoted word splitting), so `sh g3rm0n`, `zsh g3rm0n`, macOS's bash
+  3.2 and `curl … | sh` hand over to bash 5 or fail politely, never with syntax errors.
+- Linux and macOS. Everything OS-specific lives in `lib/platform/<os>.sh` behind the
+  platform contract ([architecture](../ARCHITECTURE.md#platforms)). Shared code must
+  not use GNU-only or BSD-only flags (`date -d`, `stat -c`, `sed -i`, `readlink -f`,
+  `df --output`, `ps --sort`, …); put the call in a backend, or use a form both have.
+- On Linux, read `/proc` and `/sys` directly instead of spawning tools when practical.
+- `install.sh` must keep working with **bash 3.2** (macOS's own bash): no `mapfile`,
+  associative arrays, `${var,,}` or empty arrays under `set -u`. `tests/install.sh`
+  runs it with bash 3.2.
+- Use the OS's stock tools only. GNU flags are fine inside `lib/platform/linux.sh`,
+  BSD flags inside `lib/platform/darwin.sh`. Anything that isn't part of a stock
+  install must be optional and checked with `have <cmd>` before use.
 
 ## Layout
 
@@ -23,12 +32,15 @@ lib/panel.sh        panel registry, sample/render composition, hit-testing
 lib/fold.sh         fold state and its persistence
 lib/input.sh        terminal input adapter: keys and mouse -> events
 lib/keymap.sh       key bindings as data
-lib/system.sh       system samplers and system panel renderers
+lib/platform/linux.sh   Linux backend (the platform contract)
+lib/platform/darwin.sh  macOS backend (the platform contract)
+lib/system.sh       rates, health score and system panel renderers (all platforms)
 lib/ai.sh           AI providers, cache and AI panel renderer
 lib/dashboard.sh    controller: panel registration, live loop, action dispatch
 lib/setup.sh        g3rm0n setup
 completions/        bash, zsh (_g3rm0n) and fish completions
-tests/              smoke tests, cross-shell tests, docs drift check and mocks
+tests/              test suites; tests/lib/ shared portable helpers; tests/mock/ fake
+                    curl and recorded macOS command output (tests/mock/darwin/)
 scripts/            maintainer tools (bump-version.sh); never installed
 .githooks/          git hooks (enable with: git config core.hooksPath .githooks)
 .claude/            coding-agent project settings and hooks

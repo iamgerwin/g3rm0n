@@ -12,8 +12,27 @@ shellcheck -x g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/*.sh   # 
 tests/smoke.sh                                                 # behavior, no network
 tests/shells.sh                                                # every installed shell
 tests/ui.sh                                                    # folding, keys, mouse
+tests/platform.sh                                              # backend contract, macOS fixtures, native backend
+tests/install.sh                                               # run-time files only, tarball, bash 3.2
 tests/docs.sh                                                  # docs match the code
 ```
+
+**The same suites run on every platform.** CI runs all of them on Ubuntu 22.04 and
+24.04 and on macOS 14 and 15. Write assertions about features, not about one OS:
+use the helpers in `tests/lib/common.sh` (`pty_run`, `file_mode`, `with_timeout`,
+`iso_utc`) instead of `script -c`, `stat -c` or `date -d`, so a test never needs a
+macOS twin.
+
+`tests/platform.sh` checks every backend against the platform contract, runs the
+macOS backend against recorded macOS output in `tests/mock/darwin/` (so its parsing is
+tested on Linux too), and holds the native backend to the same checks on Linux and
+macOS. Any new `plat_` function, or a change in what a backend reads, needs a case
+there and, for macOS, a fixture.
+
+`tests/install.sh` checks that only run-time files are installed, with only the
+installing OS's backend, that the installed copy runs on its own, that release
+tarballs carry no dev files, and that the installer works under bash 3.2 (CI's macOS
+`/bin/bash`; locally, point `G3_TEST_BASH32` at one).
 
 `tests/ui.sh` unit-tests the pure pieces of the interactive dashboard (input
 decoding, key bindings, fold state, titles, layout and hit-testing) and then drives

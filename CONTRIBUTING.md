@@ -16,6 +16,8 @@ read it before you start.
    tests/smoke.sh
    tests/shells.sh   # bash, zsh, fish, dash, ksh, mksh, tcsh; missing shells are skipped
    tests/ui.sh       # folding, keys and mouse, in a pseudo-terminal
+   tests/platform.sh # every OS backend against the same contract
+   tests/install.sh  # what gets installed, and that it runs
    tests/docs.sh     # docs match the code
    ```
 

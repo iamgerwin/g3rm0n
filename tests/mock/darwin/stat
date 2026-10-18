@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# BSD "stat -f %m file" on top of GNU stat
+if [[ $1 == -f && $2 == %m ]]; then exec /usr/bin/stat -c %Y "$3"; fi
+exec /usr/bin/stat "$@"

@@ -11,11 +11,13 @@ if [[ $headers == *"Bearer bad"* ]]; then
   exit 0
 fi
 
+# shellcheck source=tests/lib/common.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 now=$(date +%s)
 case $url in
   *api.anthropic.com/api/oauth/usage)
-    body='{"five_hour":{"utilization":42.0,"resets_at":"'$(date -u -d "@$((now + 7200))" +%FT%T)'+00:00"},
-           "seven_day":{"utilization":17.0,"resets_at":"'$(date -u -d "@$((now + 259200))" +%FT%T)'+00:00"}}' ;;
+    body='{"five_hour":{"utilization":42.0,"resets_at":"'$(iso_utc $((now + 7200)))'.123456+00:00"},
+           "seven_day":{"utilization":17.0,"resets_at":"'$(iso_utc $((now + 259200)))'Z"}}' ;;
   *chatgpt.com/backend-api/wham/usage)
     body='{"plan_type":"plus","rate_limit":{
            "primary_window":{"used_percent":12,"limit_window_seconds":18000,"reset_at":'$((now + 9000))'},

@@ -1,0 +1,20 @@
+# Release tarballs (GitHub's "Source code" archives, used by install.sh) carry only
+# what users need: the program, its completions, README, CHANGELOG and LICENSE.
+# The installer then copies just the run-time files (see runtime_files in install.sh).
+/tests            export-ignore
+/rules            export-ignore
+/scripts          export-ignore
+/.github          export-ignore
+/.githooks        export-ignore
+/.claude          export-ignore
+/AGENTS.md        export-ignore
+/CLAUDE.md        export-ignore
+/CONTRIBUTING.md  export-ignore
+/ARCHITECTURE.md  export-ignore
+/.editorconfig    export-ignore
+/.shellcheckrc    export-ignore
+/.gitattributes   export-ignore
+/.gitignore       export-ignore
+
+*.sh    text eol=lf
+g3rm0n  text eol=lf

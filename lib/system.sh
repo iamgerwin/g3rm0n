@@ -1,134 +1,68 @@
 #!/usr/bin/env bash
-# system.sh — samples the kernel's counters (/proc, /sys) and builds the system panels.
-# Everything is read-only. Rates are deltas between two samples divided by the real
-# elapsed time, so a slow frame never inflates them.
+# system.sh — system sampling and the system panels, the same on every platform.
+#
+# Raw numbers come from the platform backend (lib/platform/<os>.sh), which fills the
+# globals of the platform contract (see ARCHITECTURE.md). This module turns them into
+# rates, the health score and the six panels. Rates are deltas between two samples
+# divided by the real elapsed time, so a slow frame never inflates them.
+
+# The platform contract: every backend defines all of these (see ARCHITECTURE.md).
+SYS_CONTRACT=(plat_static plat_cpu plat_load plat_mem plat_net_bytes plat_disk_bytes plat_temp
+  plat_uptime plat_root_pct plat_disks plat_battery plat_gpu plat_top plat_link plat_vpn
+  plat_mtime plat_cleanup)
+
+sys_contract_missing() { # -> contract functions the loaded backend doesn't define
+  local f
+  for f in "${SYS_CONTRACT[@]}"; do declare -F "$f" >/dev/null || printf '%s\n' "$f"; done
+}
 
 # ---- static facts (read once) -----------------------------------------------
 
 sys_static() {
+  local missing; missing=$(sys_contract_missing)
+  [[ -z $missing ]] || die "the $G3_PLATFORM backend is incomplete, missing: ${missing//$'\n'/ }"
   S_HOST=${HOSTNAME:-$(uname -n)}
-  S_OS=$(. /etc/os-release 2>/dev/null; printf '%s' "${PRETTY_NAME:-Linux}")
   S_KERNEL=$(uname -r)
-  S_MODEL=""
-  local k v
-  while IFS=: read -r k v; do
-    [[ $k == "model name"* ]] && { S_MODEL=${v# }; break; }
-  done </proc/cpuinfo
-  S_MODEL=${S_MODEL//(R)/}; S_MODEL=${S_MODEL//(TM)/}; S_MODEL=${S_MODEL% CPU @*}
-  S_THREADS=$(nproc 2>/dev/null || echo "?")
-  S_GPU=""
-  if have nvidia-smi && nvidia-smi -L >/dev/null 2>&1; then S_GPU=nvidia
-  elif compgen -G "/sys/class/drm/card[0-9]/device/gpu_busy_percent" >/dev/null; then S_GPU=amd; fi
-  S_PT=() S_PI=() S_RXH=() S_TXH=()
+  plat_static
+  S_RXH=() S_TXH=()
   S_T=${EPOCHREALTIME/./}
-  sys_cpu_read S_PT S_PI
-  sys_net_read;  S_PRX=$NET_RX S_PTX=$NET_TX
-  sys_dio_read;  S_PDR=$DIO_R S_PDW=$DIO_W
-}
-
-# ---- raw counters -----------------------------------------------------------
-
-sys_cpu_read() { # total_arr idle_arr — index 0 is all CPUs, then one per core
-  local -n _tot=$1 _idl=$2
-  local name user nice sys idle iow irq soft steal _rest
-  _tot=() _idl=()
-  while read -r name user nice sys idle iow irq soft steal _rest; do
-    [[ $name == cpu* ]] || break
-    _tot+=( $(( user + nice + sys + idle + iow + irq + soft + ${steal:-0} )) )
-    _idl+=( $(( idle + iow )) )
-  done </proc/stat
-}
-
-sys_net_read() { # -> NET_RX NET_TX: bytes over every interface except loopback
-  local line ifc
-  local -a f
-  NET_RX=0 NET_TX=0
-  while IFS= read -r line; do
-    [[ $line == *:* ]] || continue
-    ifc=${line%%:*}; ifc=${ifc//[[:space:]]/}
-    [[ $ifc == lo ]] && continue
-    read -ra f <<<"${line#*:}"
-    NET_RX=$(( NET_RX + f[0] )); NET_TX=$(( NET_TX + f[8] ))
-  done </proc/net/dev
-}
-
-sys_dio_read() { # -> DIO_R DIO_W: bytes over physical disks (partitions/loop/dm skipped)
-  local maj min dev rd rdm sr rms wr wrm sw _rest
-  DIO_R=0 DIO_W=0
-  while read -r maj min dev rd rdm sr rms wr wrm sw _rest; do
-    [[ -e /sys/block/$dev/device ]] || continue
-    DIO_R=$(( DIO_R + sr * 512 )); DIO_W=$(( DIO_W + sw * 512 ))
-  done </proc/diskstats
-}
-
-sys_temp() { # -> hottest sensor in °C, empty when the machine exposes none
-  local f t hot=-1
-  for f in /sys/class/thermal/thermal_zone*/temp /sys/class/hwmon/hwmon*/temp*_input; do
-    [[ -r $f ]] || continue
-    read -r t <"$f" 2>/dev/null || continue
-    [[ $t =~ ^[0-9]+$ ]] || continue
-    (( t / 1000 > hot && t < 150000 )) && hot=$(( t / 1000 ))
-  done
-  (( hot >= 0 )) && printf '%d' "$hot"
+  plat_net_bytes;  S_PRX=$NET_RX S_PTX=$NET_TX
+  plat_disk_bytes; S_PDR=$DIO_R S_PDW=$DIO_W
 }
 
 # ---- one sample -------------------------------------------------------------
 
 sys_sample() {
-  local now dus k n step dt di p strip=""
+  local now dus
   now=${EPOCHREALTIME/./}
   dus=$(( now - S_T )); (( dus < 1 )) && dus=1
   S_T=$now
 
-  # cpu
-  local -a tot=() idl=()
-  sys_cpu_read tot idl
-  dt=$(( tot[0] - S_PT[0] )); di=$(( idl[0] - S_PI[0] ))
-  S_CPU=0; (( dt > 0 )) && S_CPU=$(( (dt - di) * 100 / dt ))
-  n=$(( ${#tot[@]} - 1 )); step=1
-  (( n > 40 )) && step=$(( (n + 39) / 40 ))   # keep the strip inside the panel
-  for (( k = 1; k <= n; k += step )); do
-    dt=$(( tot[k] - S_PT[k] )); di=$(( idl[k] - S_PI[k] ))
-    p=0; (( dt > 0 )) && p=$(( (dt - di) * 100 / dt ))
-    (( p > 100 )) && p=100; (( p < 0 )) && p=0
-    strip+=${G3_SPARK[p * 7 / 100]}
-  done
-  S_STRIP=$strip
-  S_PT=("${tot[@]}") S_PI=("${idl[@]}")
-  read -r S_L1 S_L5 S_L15 S_TASKS _ </proc/loadavg
+  plat_cpu
+  plat_load
 
-  # memory (kB in /proc/meminfo)
-  local key val _u mt=0 ma=0 st=0 sf=0 bu=0 ca=0 sr=0
-  while read -r key val _u; do
-    case $key in
-      MemTotal:) mt=$val ;; MemAvailable:) ma=$val ;; Buffers:) bu=$val ;;
-      Cached:) ca=$val ;; SReclaimable:) sr=$val ;; SwapTotal:) st=$val ;; SwapFree:) sf=$val ;;
-    esac
-  done </proc/meminfo
-  S_MEM_T=$(( mt * 1024 )) S_MEM_U=$(( (mt - ma) * 1024 )) S_MEM_A=$(( ma * 1024 ))
-  S_CACHE=$(( (bu + ca + sr) * 1024 ))
-  S_SWAP_T=$(( st * 1024 )) S_SWAP_U=$(( (st - sf) * 1024 ))
-  S_MEM_P=0;  (( mt > 0 )) && S_MEM_P=$(( (mt - ma) * 100 / mt ))
-  S_SWAP_P=0; (( st > 0 )) && S_SWAP_P=$(( (st - sf) * 100 / st ))
+  plat_mem
+  S_MEM_U=$(( S_MEM_T - S_MEM_A )) S_SWAP_U=$(( S_SWAP_T - S_SWAP_F ))
+  (( S_SWAP_U < 0 )) && S_SWAP_U=0
+  S_MEM_P=0;  (( S_MEM_T > 0 )) && S_MEM_P=$(( S_MEM_U * 100 / S_MEM_T ))
+  S_SWAP_P=0; (( S_SWAP_T > 0 )) && S_SWAP_P=$(( S_SWAP_U * 100 / S_SWAP_T ))
 
   # network + disk throughput
-  sys_net_read
+  plat_net_bytes
   S_RX=$(( (NET_RX - S_PRX) * 1000000 / dus )); S_TX=$(( (NET_TX - S_PTX) * 1000000 / dus ))
   (( S_RX < 0 )) && S_RX=0; (( S_TX < 0 )) && S_TX=0
   S_PRX=$NET_RX S_PTX=$NET_TX
   S_RXH+=("$S_RX") S_TXH+=("$S_TX")
   (( ${#S_RXH[@]} > 16 )) && S_RXH=("${S_RXH[@]:1}") S_TXH=("${S_TXH[@]:1}")
 
-  sys_dio_read
+  plat_disk_bytes
   S_DR=$(( (DIO_R - S_PDR) * 1000000 / dus )); S_DW=$(( (DIO_W - S_PDW) * 1000000 / dus ))
   (( S_DR < 0 )) && S_DR=0; (( S_DW < 0 )) && S_DW=0
   S_PDR=$DIO_R S_PDW=$DIO_W
 
-  S_TEMP=$(sys_temp)
-  local up _idle
-  read -r up _idle </proc/uptime
-  S_UP=${up%.*}
-  S_ROOT_P=$(df --output=pcent / 2>/dev/null | tail -n1 | tr -dc '0-9')
+  S_TEMP=$(plat_temp)
+  plat_uptime
+  plat_root_pct
 }
 
 # ---- health ------------------------------------------------------------------
@@ -158,7 +92,7 @@ declare -gA SYS_TITLE=([cpu]="CPU" [memory]="Memory" [disk]="Disk" [power]="Powe
 sys_panel_cpu() {
   PANEL_BODY=()
   PANEL_BODY+=("$(ui_label Usage)$(ui_bar "$S_CPU") $(ui_pct "$S_CPU")")
-  PANEL_BODY+=("$(ui_label Cores)${c_cyan}${S_STRIP}${c_off}")
+  PANEL_BODY+=("$(ui_label Cores)${S_CORES}")
   PANEL_BODY+=("$(ui_label Load)$S_L1 · $S_L5 · $S_L15 ${c_dim}· $S_THREADS threads${c_off}")
   PANEL_BODY+=("$(ui_label Model)${c_dim}${S_MODEL:0:38}${c_off}")
   PANEL_SUM="$(ui_tone "$S_CPU")${S_CPU}%${c_off} · load $S_L1"
@@ -181,43 +115,31 @@ sys_panel_disk() {
   PANEL_BODY=()
   local mnt fs size used pct label
   declare -A seen=()
-  while read -r mnt fs size used pct; do
+  while IFS=$'\t' read -r mnt fs size used pct; do
     [[ -n ${seen[$mnt]:-} ]] && continue
     seen[$mnt]=1
     label=$mnt; [[ $mnt == "$HOME" ]] && label="~"
-    pct=${pct%\%}
     PANEL_BODY+=("$(ui_label "${label:0:6}")$(ui_bar "$pct" 10) $(ui_pct "$pct") ${c_dim}$(g3_bytes "$used")/$(g3_bytes "$size") $fs${c_off}")
-  done < <(df -B1 --output=target,fstype,size,used,pcent / "$HOME" 2>/dev/null | tail -n +2)
+  done < <(plat_disks)
   PANEL_BODY+=("$(ui_label I/O)${c_dim}read${c_off} $(g3_bytes "$S_DR")/s ${c_dim}· write${c_off} $(g3_bytes "$S_DW")/s")
   PANEL_SUM="/ $(ui_tone "${S_ROOT_P:-0}")${S_ROOT_P:-?}%${c_off} · io $(g3_bytes $(( S_DR + S_DW )))/s"
 }
 
 sys_panel_power() {
   PANEL_BODY=()
-  local d type cap status bat="" ac=""
-  for d in /sys/class/power_supply/*; do
-    [[ -r $d/type ]] || continue
-    read -r type <"$d/type"
-    if [[ $type == Battery && -r $d/capacity && -z $bat ]]; then
-      read -r cap <"$d/capacity"; read -r status <"$d/status" 2>/dev/null
-      bat="$(ui_bar "$cap" 10) $(ui_pct "$cap") ${c_dim}· ${status,,}${c_off}"
-    elif [[ $type == Mains && -r $d/online ]]; then
-      read -r ac <"$d/online"
-    fi
-  done
+  local bat=""
+  plat_battery
+  [[ -n $BAT_CAP ]] && bat="$(ui_bar "$BAT_CAP" 10) $(ui_pct "$BAT_CAP") ${c_dim}· ${BAT_STATUS}${c_off}"
   if [[ -n $bat ]]; then PANEL_BODY+=("$(ui_label Batt)$bat")
-  elif [[ $ac == 1 ]]; then PANEL_BODY+=("$(ui_label Batt)${c_dim}none · on AC power${c_off}")
+  elif [[ $BAT_AC == 1 ]]; then PANEL_BODY+=("$(ui_label Batt)${c_dim}none · on AC power${c_off}")
   else PANEL_BODY+=("$(ui_label Batt)${c_dim}none${c_off}"); fi
 
-  local gu gm gt gc
-  if [[ $S_GPU == nvidia ]]; then
-    IFS=', ' read -r gu gm gt gc < <(nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total,temperature.gpu \
-      --format=csv,noheader,nounits 2>/dev/null | head -n1)
-    [[ $gu =~ ^[0-9]+$ ]] && PANEL_BODY+=("$(ui_label GPU)$(ui_bar "$gu" 10) $(ui_pct "$gu") ${c_dim}· $(g3_bytes $(( gm * 1048576 )))/$(g3_bytes $(( gt * 1048576 ))) · ${gc}°C${c_off}")
-  elif [[ $S_GPU == amd ]]; then
-    local f
-    for f in /sys/class/drm/card[0-9]/device/gpu_busy_percent; do read -r gu <"$f" 2>/dev/null && break; done
-    [[ $gu =~ ^[0-9]+$ ]] && PANEL_BODY+=("$(ui_label GPU)$(ui_bar "$gu" 10) $(ui_pct "$gu")")
+  plat_gpu
+  if [[ -n $GPU_UTIL ]]; then
+    local extra=""
+    [[ -n $GPU_MEM_T ]] && extra+=" · $(g3_bytes "$GPU_MEM_U")/$(g3_bytes "$GPU_MEM_T")"
+    [[ -n $GPU_TEMP ]] && extra+=" · ${GPU_TEMP}°C"
+    PANEL_BODY+=("$(ui_label GPU)$(ui_bar "$GPU_UTIL" 10) $(ui_pct "$GPU_UTIL")${extra:+ ${c_dim}${extra# }${c_off}}")
   fi
 
   if [[ -n $S_TEMP ]]; then
@@ -229,7 +151,7 @@ sys_panel_power() {
   fi
   PANEL_BODY+=("$(ui_label Uptime)$(g3_duration "$S_UP")")
   PANEL_SUM=""
-  if [[ -n $bat ]]; then PANEL_SUM="batt ${cap}%"; elif [[ $ac == 1 ]]; then PANEL_SUM="AC"; fi
+  if [[ -n $BAT_CAP ]]; then PANEL_SUM="batt ${BAT_CAP}%"; elif [[ $BAT_AC == 1 ]]; then PANEL_SUM="AC"; fi
   [[ -n $S_TEMP ]] && PANEL_SUM+="${PANEL_SUM:+ · }${S_TEMP}°C"
   [[ -n $PANEL_SUM ]] || PANEL_SUM="up $(g3_duration "$S_UP")"
 }
@@ -240,12 +162,13 @@ sys_panel_processes() {
   local pcpu rss comm rank=0
   PANEL_SUM="${S_TASKS#*/} tasks"
   while read -r pcpu rss comm; do
+    comm=${comm##*/}                 # macOS reports full paths
     [[ $comm == ps ]] && continue   # ps always sees itself as busy
     rank=$(( rank + 1 ))
     (( rank == 1 )) && PANEL_SUM+=" · ${comm:0:10} ${pcpu%.*}%"
     PANEL_BODY+=("${c_dim}$rank${c_off}      $(ui_pad "${comm:0:16}" 17)$(ui_bar "${pcpu%.*}" 5) $(printf '%5s%%' "$pcpu") $(printf '%7s' "$(g3_bytes $(( rss * 1024 )))")")
     (( rank >= 3 )) && break
-  done < <(ps -eo pcpu=,rss=,comm= --sort=-pcpu 2>/dev/null | head -n 5)
+  done < <(plat_top)
 }
 
 sys_panel_network() {
@@ -253,21 +176,9 @@ sys_panel_network() {
   PANEL_BODY+=("$(ui_label Down)${c_cyan}$(ui_pad "$(ui_spark "${S_RXH[@]}")" 16)${c_off} $(g3_bytes "$S_RX")/s")
   PANEL_BODY+=("$(ui_label Up)${c_cyan}$(ui_pad "$(ui_spark "${S_TXH[@]}")" 16)${c_off} $(g3_bytes "$S_TX")/s")
   PANEL_SUM="↓ $(g3_bytes "$S_RX")/s · ↑ $(g3_bytes "$S_TX")/s"
-  local w dev="" src="" prev=""
-  if have ip; then
-    for w in $(ip -o -4 route get 1.1.1.1 2>/dev/null); do
-      [[ $prev == dev ]] && dev=$w
-      [[ $prev == src ]] && src=$w
-      prev=$w
-    done
-  fi
-  PANEL_BODY+=("$(ui_label Link)${dev:-offline}${src:+ ${c_dim}·${c_off} $src}")
-  local v name addr
-  for v in /sys/class/net/wg* /sys/class/net/tun* /sys/class/net/tailscale* /sys/class/net/ppp*; do
-    [[ -e $v ]] || continue
-    name=${v##*/}
-    addr=$(ip -o -4 addr show dev "$name" 2>/dev/null | { read -r _ _ _ a _; printf '%s' "${a%/*}"; })
-    PANEL_BODY+=("$(ui_label VPN)$name${addr:+ ${c_dim}·${c_off} $addr}")
-    break
-  done
+  plat_link
+  PANEL_BODY+=("$(ui_label Link)${LINK_DEV:-offline}${LINK_ADDR:+ ${c_dim}·${c_off} $LINK_ADDR}")
+  plat_vpn
+  [[ -n $VPN_DEV ]] && PANEL_BODY+=("$(ui_label VPN)$VPN_DEV${VPN_ADDR:+ ${c_dim}·${c_off} $VPN_ADDR}")
+  return 0
 }
