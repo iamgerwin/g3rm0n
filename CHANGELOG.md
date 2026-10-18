@@ -6,6 +6,10 @@ All notable changes to g3rm0n are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The macOS installer's "Using bash …" line no longer runs the version into the path.
+
 ## [0.1.3] - 2026-10-18
 
 ### Added
