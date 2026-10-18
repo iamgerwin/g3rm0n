@@ -3,6 +3,12 @@
 ## Language and runtime
 
 - Bash **5.0+** only (`EPOCHREALTIME`, `EPOCHSECONDS`, namerefs, `${var,,}`).
+- g3rm0n is a bash program, but people start it from any shell (bash, zsh, fish, dash,
+  ksh, tcsh, …). Never assume the user's shell is bash: anything shown to the user
+  that they would type (exporting a key, editing `PATH`) goes through
+  `g3_export_hint` or the installer's `path_hint`, which phrase it for their shell.
+- The POSIX guard at the top of `g3rm0n` and `install.sh` must stay POSIX `sh`, so
+  `sh g3rm0n` and `curl … | sh` fail politely instead of with syntax errors.
 - Linux only: read `/proc` and `/sys` directly instead of spawning tools when practical.
 - GNU coreutils are fine (`df --output`, `stat -c`, `date -d`). Anything else must be
   optional and checked with `have <cmd>` before use.
@@ -17,8 +23,8 @@ lib/system.sh       system samplers and system panels
 lib/ai.sh           AI providers, cache and AI panels
 lib/dashboard.sh    frame composition, live loop, one-shot output
 lib/setup.sh        g3rm0n setup
-completions/        bash and fish completions
-tests/              smoke tests and mocks
+completions/        bash, zsh (_g3rm0n) and fish completions
+tests/              smoke tests, cross-shell tests and mocks
 rules/              these rules
 ```
 

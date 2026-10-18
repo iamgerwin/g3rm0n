@@ -78,8 +78,9 @@ curl -fsSL https://raw.githubusercontent.com/iamgerwin/g3rm0n/main/install.sh | 
 ```
 
 This installs the latest release into `~/.local/share/g3rm0n`, links `~/.local/bin/g3rm0n`,
-and adds bash and fish completions. On fish, it also puts `~/.local/bin` on your `PATH`.
-No root is needed.
+and adds bash, zsh and fish completions. On fish, it also puts `~/.local/bin` on your
+`PATH`; for other shells it prints the exact line to add if `~/.local/bin` is missing.
+No root is needed. Pipe the installer into `bash`, not `sh`.
 
 Other ways:
 
@@ -92,6 +93,21 @@ git clone https://github.com/iamgerwin/g3rm0n && cd g3rm0n && ./install.sh
 ```
 
 To update, run the install command again.
+
+### Shells
+
+g3rm0n is a bash 5 program, so it runs the same whichever shell you start it from:
+bash, zsh, fish, dash, ksh, mksh, tcsh, nushell and others. Even `sh g3rm0n` hands
+itself over to bash. Hints that tell you what to type, such as how to export an API
+key, are written in the syntax of the shell you started it from.
+
+| Shell | Completions | Exporting an API key |
+|-------|-------------|----------------------|
+| bash | installed automatically (needs the `bash-completion` package) | `export OPENROUTER_API_KEY=sk-or-...` |
+| zsh | installed to `~/.local/share/zsh/site-functions`; add `fpath+=(~/.local/share/zsh/site-functions)` to `~/.zshrc` before `compinit` | `export OPENROUTER_API_KEY=sk-or-...` |
+| fish | installed automatically | `set -gx OPENROUTER_API_KEY sk-or-...` |
+| tcsh / csh | none | `setenv OPENROUTER_API_KEY sk-or-...` |
+| nushell | none | `$env.OPENROUTER_API_KEY = "sk-or-..."` |
 
 ## Usage
 
@@ -140,11 +156,9 @@ Without a config, g3rm0n shows every section and every provider it can find.
 | ◆ AI Credits | OpenRouter | Credits left, spend per day/week/month, key cap | `OPENROUTER_API_KEY` |
 
 A panel appears only when its credential exists. Sign in with that tool's own CLI, or
-export the key in your shell profile, for example in fish:
-
-```fish
-set -gx OPENROUTER_API_KEY sk-or-...
-```
+export the key in your shell profile (see [Shells](#shells) for the syntax). The key
+must be **exported**: a plain `VAR=...` in bash or zsh, or `set -g` without `-x` in
+fish, stays inside that shell and g3rm0n can't see it.
 
 Claude and Codex usage comes from the same endpoints their official CLIs use for
 their own usage screens. Those endpoints aren't publicly documented and may change.
@@ -204,6 +218,8 @@ openrouter.credentials = env:OPENROUTER_API_KEY
 | `stale 7m` | The last refresh failed; the numbers shown are from the last success |
 | No AI panels at all | Install `curl` and `jq`, then run `g3rm0n setup --show` |
 | A provider is missing | Run `g3rm0n setup --show` to see whether its credential was found |
+| Key is set but shows *not found* | It isn't exported. Use `export` (bash/zsh), `set -gx` (fish) or `setenv` (tcsh) |
+| `g3rm0n: command not found` | `~/.local/bin` isn't on your `PATH`; the installer printed the line to add for your shell |
 | Boxes or misaligned bars | Use a UTF-8 locale and a font with box-drawing glyphs |
 
 ## Uninstall

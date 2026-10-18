@@ -6,6 +6,31 @@ All notable changes to g3rm0n are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- zsh completions (`completions/_g3rm0n`), installed by `install.sh`.
+- Hints that tell you what to type (exporting an API key, adding to `PATH`) now use
+  the syntax of the shell you started g3rm0n or the installer from: bash, zsh, fish,
+  ksh, tcsh/csh, nushell, xonsh or elvish.
+- `g3rm0n setup --show` explains that API keys must be exported.
+- Cross-shell test suite (`tests/shells.sh`): the dashboard, interactive setup, the
+  installer and completions, started from bash, zsh, fish, dash, ksh, mksh, tcsh and
+  busybox sh. CI installs every one of them.
+
+### Fixed
+
+- `sh g3rm0n` (or dash/ksh/zsh) now hands over to bash instead of failing with syntax errors.
+- `curl … | sh` now stops with "run this installer with bash" instead of a
+  misleading "Linux only" error.
+- `install.sh --help` works when the installer is piped.
+- A piped install run from inside a folder that looks like a g3rm0n checkout no
+  longer links that folder instead of downloading the release.
+- Completing a comma-separated `--sections` list in bash and fish keeps the items
+  already typed (`cpu,me` → `cpu,memory`).
+- The setup checklist accepts arrow keys from terminals in application cursor mode.
+- Home-folder paths in setup are shortened to `~` without a regular expression, so a
+  `$HOME` containing special characters displays correctly.
+
 ### Changed
 
 - Installer: checkout detection rewritten so older ShellCheck releases lint it cleanly (no behavior change).

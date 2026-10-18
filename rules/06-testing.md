@@ -6,13 +6,22 @@ push and pull request.
 ## Automated
 
 ```bash
-bash -n g3rm0n install.sh lib/*.sh completions/g3rm0n.bash   # syntax
-shellcheck -x g3rm0n install.sh lib/*.sh completions/g3rm0n.bash   # lint, zero findings
+bash -n g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/*.sh   # syntax
+zsh -n completions/_g3rm0n; fish --no-execute completions/g3rm0n.fish   # syntax
+shellcheck -x g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/*.sh   # lint, zero findings
 tests/smoke.sh                                                 # behavior, no network
+tests/shells.sh                                                # every installed shell
 ```
 
-`tests/smoke.sh` runs against temporary config and cache folders and puts
-`tests/mock/curl` first on `PATH`, so it never touches your real setup or real APIs.
+Both suites run against temporary config and cache folders and put
+`tests/mock/curl` first on `PATH`, so they never touch your real setup or real APIs.
+
+`tests/shells.sh` starts the dashboard, `g3rm0n setup` (interactively, in a
+pseudo-terminal), the installer and the completions from bash, zsh, fish, dash/sh,
+ksh, mksh, tcsh and busybox sh. Shells that aren't installed are reported as `skip`;
+CI installs all of them, so a skip locally is fine but a `FAIL` never is. Anything
+that prints a command for the user to type, or that touches the installer or the
+completions, needs a case here.
 
 ## Manual, for anything that changes output
 
