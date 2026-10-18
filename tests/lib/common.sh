@@ -29,3 +29,7 @@ pty_run() {
 
 # iso_utc <epoch> -> 2026-10-18T17:00:00 (UTC), with GNU or BSD date
 iso_utc() { date -u -d "@$1" +%FT%T 2>/dev/null || date -u -r "$1" +%FT%T; }
+
+# show_on_fail <text> : in CI, print the output a failed check looked at (indented),
+# so a failure on a remote runner can be diagnosed from its log alone
+show_on_fail() { [[ -n ${CI:-} ]] && sed -n '1,30s/^/        | /p' <<<"$1" >&2; return 0; }
