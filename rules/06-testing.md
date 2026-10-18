@@ -13,6 +13,7 @@ tests/smoke.sh                                                 # behavior, no ne
 tests/shells.sh                                                # every installed shell
 tests/ui.sh                                                    # folding, keys, mouse
 tests/platform.sh                                              # backend contract, macOS fixtures, native backend
+tests/ai.sh                                                    # AI refresh intervals, rate limits, cache
 tests/install.sh                                               # run-time files only, tarball, bash 3.2
 tests/docs.sh                                                  # docs match the code
 ```

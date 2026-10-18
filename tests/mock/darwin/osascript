@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# osascript running the backend's IOKit temperature script, as on an Apple silicon Mac
+# (sensor names as macOS reports them; values synthetic). G3_MOCK_SENSORS=none plays
+# a Mac without readable sensors (Intel, or a virtual machine).
+[[ $1 == -l && $2 == JavaScript ]] || exit 1
+script=$(cat)
+[[ $script == *IOHIDEventSystemClientCopyServices* ]] || exit 1
+[[ ${G3_MOCK_SENSORS:-} == none ]] && { echo; exit 0; }
+printf '%s\t%s\n' "PMU tcal" 51.5 "pACC MTR Temp Sensor2" 52.3 "eACC MTR Temp Sensor0" 47.1 \
+  "PMU tdie1" 49.8 "SOC MTR Temp Sensor0" 55.9 "GPU MTR Temp Sensor1" 44.0 \
+  "NAND CH0 temp" 40.0 "gas gauge battery" 31.2

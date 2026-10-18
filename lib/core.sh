@@ -87,6 +87,16 @@ g3_export_hint() { # VAR -> how to export it in the user's shell
   esac
 }
 
+# seconds -> "<1m" / "12m" / "3h" / "2d": short ages that fit beside other text
+g3_ago() {
+  local s=${1:-0}
+  (( s < 0 )) && s=0
+  if   (( s < 60 ));    then printf '<1m'
+  elif (( s < 3600 ));  then printf '%dm' $(( s / 60 ))
+  elif (( s < 86400 )); then printf '%dh' $(( s / 3600 ))
+  else printf '%dd' $(( s / 86400 )); fi
+}
+
 g3_expand() { # "~/x" -> "$HOME/x"
   # shellcheck disable=SC2088  # matching a literal "~/" prefix on purpose
   if [[ $1 == "~/"* ]]; then printf '%s' "$HOME/${1#\~/}"; else printf '%s' "$1"; fi

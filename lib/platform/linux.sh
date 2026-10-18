@@ -87,16 +87,34 @@ plat_disk_bytes() { # -> DIO_R DIO_W: bytes over physical disks (partitions/loop
   done </proc/diskstats
 }
 
-plat_temp() { # -> hottest sensor in °C, empty when the machine exposes none
-  local f t hot=-1
-  for f in /sys/class/thermal/thermal_zone*/temp /sys/class/hwmon/hwmon*/temp*_input; do
+# -> "kind<TAB>°C<TAB>name" per temperature sensor; kind is cpu for CPU packages and
+# cores (x86_pkg_temp, coretemp, k10temp, zenpower, cpu-thermal), other for the rest
+plat_sensors() {
+  local d f t name label kind
+  for d in /sys/class/thermal/thermal_zone*; do
+    [[ -r $d/temp ]] || continue
+    read -r t <"$d/temp" 2>/dev/null || continue
+    name=""; [[ -r $d/type ]] && read -r name <"$d/type"
+    kind=other; [[ $name == @(x86_pkg_temp|*cpu*|soc_thermal) ]] && kind=cpu
+    lx_sensor "$kind" "$t" "${name:-${d##*/}}"
+  done
+  for f in /sys/class/hwmon/hwmon*/temp*_input; do
     [[ -r $f ]] || continue
     read -r t <"$f" 2>/dev/null || continue
-    [[ $t =~ ^[0-9]+$ ]] || continue
-    (( t / 1000 > hot && t < 150000 )) && hot=$(( t / 1000 ))
+    name=""; [[ -r ${f%/*}/name ]] && read -r name <"${f%/*}/name"
+    label=""; [[ -r ${f%_input}_label ]] && read -r label <"${f%_input}_label"
+    kind=other; [[ $name == @(coretemp|k10temp|zenpower|cpu_thermal|cpu-thermal) ]] && kind=cpu
+    lx_sensor "$kind" "$t" "${name:-hwmon}${label:+ $label}"
   done
-  (( hot >= 0 )) && printf '%d' "$hot"
+  return 0
 }
+
+lx_sensor() { # kind millidegrees name -> one line, sane readings only
+  [[ $2 =~ ^[0-9]+$ ]] && (( $2 > 0 && $2 < 130000 )) || return 0
+  printf '%s\t%d.%d\t%s\n' "$1" $(( $2 / 1000 )) $(( $2 % 1000 / 100 )) "$3"
+}
+
+plat_temp() { plat_sensors; }   # sensor lines for this frame (sysfs is instant)
 
 plat_uptime() { local up _idle; read -r up _idle </proc/uptime; S_UP=${up%.*}; }
 

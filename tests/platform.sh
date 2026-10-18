@@ -57,6 +57,14 @@ out=$(grep -nE '(date -d|date -j|stat -c|stat -f|readlink -f|sed -i|df -B|--outp
       | grep -vE '^\S+:[0-9]+:\s*#|/proc/\$PPID/comm' )
 check "portable: no OS-specific commands in shared code" test -z "$out"
 
+# ---- the shared temperature picker (same on every platform) -------------------------
+pick() { bash -c 'for m in core ui; do source "$1/lib/$m.sh"; done; source "$1/lib/platform/linux.sh"; source "$1/lib/system.sh"
+                  sys_temp_pick; printf "%s|%s" "$S_TEMP" "$S_TEMP_SRC"' _ "$root" <<<"$1"; }
+check "temp pick: the hottest CPU sensor wins"        test "$(pick $'cpu\t52.3\tpACC\nother\t60.0\tSOC\ncpu\t48\ttdie')" = "52|CPU"
+check "temp pick: else the hottest sensor"            test "$(pick $'other\t41.5\tnvme\nother\t55\tacpitz')" = "55|hottest sensor"
+check "temp pick: nothing readable"                   test "$(pick '')" = "|"
+check "temp pick: junk lines ignored"                 test "$(pick $'cpu\tN/A\tx\ncpu\t47.9\ty')" = "47|CPU"
+
 # ---- 2. the macOS backend on recorded macOS output ---------------------------------
 out=$(PATH="$root/tests/mock/darwin:$PATH" G3_PLATFORM=darwin "$root/g3rm0n" --once --no-ai 2>&1)
 check "darwin: OS name"                  contains "$out" "macOS 15.1"
@@ -72,7 +80,7 @@ check "darwin: data volume shown as ~"   matches  "$out" "^~ .* 35% 152.5G/460.4
 check "darwin: disk throughput"          matches  "$out" "read [1-9][0-9.]*[KM]/s"
 check "darwin: battery"                  contains "$out" "81% · discharging"
 check "darwin: Apple GPU"                matches  "$out" "GPU .* 18%"
-check "darwin: no root-only sensors"     contains "$out" "no sensors exposed"
+check "darwin: CPU temperature from IOKit sensors" contains "$out" "Temp   52°C CPU"
 check "darwin: uptime"                   contains "$out" "Uptime 3d 4h"
 check "darwin: tasks"                    contains "$out" "8 total · 2 running"
 check "darwin: busiest process"          matches  "$out" "1 +firefox"
@@ -83,7 +91,14 @@ check "darwin: link"                     contains "$out" "en0 · 192.168.1.24"
 check "darwin: VPN, not macOS's own tunnels" contains "$out" "VPN    utun4 · 100.101.1.7"
 out=$(PATH="$root/tests/mock/darwin:$PATH" G3_PLATFORM=darwin "$root/g3rm0n" --once --no-ai --fold all 2>&1)
 check "darwin: folded summaries"         contains "$out" "▸ ◫ Memory · 51% · 8.2G/16.0G"
-check "darwin: CPU measurement cleaned up" bash -c "! ls '$XDG_CACHE_HOME'/g3rm0n/cpu.* 2>/dev/null"
+check "darwin: background probes cleaned up" bash -c "! ls '$XDG_CACHE_HOME'/g3rm0n/run.* 2>/dev/null"
+out=$(PATH="$root/tests/mock/darwin:$PATH" G3_PLATFORM=darwin G3_MOCK_SENSORS=none "$root/g3rm0n" --once --no-ai 2>&1)
+check "darwin: no readable sensors (Intel, VM)" contains "$out" "no sensors exposed"
+out=$(PATH="$root/tests/mock/darwin:$PATH" G3_PLATFORM=darwin "$root/g3rm0n" sensors 2>&1)
+check "darwin sensors: CPU clusters and dies are CPU"  bash -c "grep -qE '^  CPU +52.3°C  pACC' <<<\"\$1\" && grep -qE '^  CPU +49.8°C  PMU tdie1' <<<\"\$1\"" _ "$out"
+check "darwin sensors: a hotter SoC sensor isn't CPU"  bash -c "grep -qE '^  other +55.9°C  SOC' <<<\"\$1\"" _ "$out"
+check "darwin sensors: the calibration value is ignored" lacks "$out" "tcal"
+check "darwin sensors: says what Temp shows"           contains "$out" "Temp shows 52°C (CPU"
 
 # ---- 2b. macOS Keychain logins (Claude Code keeps its login there on a Mac) -------------
 k=$tmp/kc; mkdir -p "$k/home"
@@ -147,6 +162,10 @@ check "$native: memory total"            matches  "$out" "Used +.*%.*/[1-9][0-9.
 check "$native: root volume"             matches  "$out" "^/ +.*%"
 check "$native: disk throughput row"     matches  "$out" "^I/O +read .*/s · write .*/s"
 check "$native: battery row"             matches  "$out" "Batt +"
+check "$native: temperature row"         matches  "$out" "Temp +([0-9]+°C (CPU|hottest sensor)|no sensors exposed)"
+out=$("$root/g3rm0n" sensors 2>&1)
+check "$native: g3rm0n sensors runs"     contains "$out" "Temperature sensors g3rm0n can read ($native)"
+out=$("$root/g3rm0n" --once --no-ai 2>&1)
 check "$native: uptime"                  matches  "$out" "Uptime [0-9]+(d|h|m)"
 check "$native: tasks"                   matches  "$out" "Tasks +[1-9][0-9]* total · [0-9]+ running"
 check "$native: three busiest processes" bash -c "(( \$(grep -cE '^[123] +[^ ]' <<<\"\$1\") == 3 ))" _ "$out"

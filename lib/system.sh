@@ -8,7 +8,7 @@
 
 # The platform contract: every backend defines all of these (see ARCHITECTURE.md).
 SYS_CONTRACT=(plat_static plat_cpu plat_load plat_mem plat_net_bytes plat_disk_bytes plat_temp
-  plat_uptime plat_root_pct plat_disks plat_battery plat_gpu plat_top plat_link plat_vpn
+  plat_uptime plat_root_pct plat_disks plat_battery plat_gpu plat_top plat_link plat_vpn plat_sensors
   plat_mtime plat_keychain_has plat_keychain_read plat_cleanup)
 
 sys_contract_missing() { # -> contract functions the loaded backend doesn't define
@@ -62,9 +62,43 @@ sys_sample() {
   (( S_DR < 0 )) && S_DR=0; (( S_DW < 0 )) && S_DW=0
   S_PDR=$DIO_R S_PDW=$DIO_W
 
-  S_TEMP=$(plat_temp)
+  sys_temp_pick < <(plat_temp)
   plat_uptime
   plat_root_pct
+}
+
+# sensor lines ("kind<TAB>°C<TAB>name") on stdin -> S_TEMP (whole °C) and S_TEMP_SRC:
+# the hottest CPU sensor when the machine names one ("CPU", as iStat Menus shows it),
+# else the hottest sensor of any kind; both empty when nothing is readable
+sys_temp_pick() {
+  local kind v name cpu=-1 any=-1
+  while IFS=$'\t' read -r kind v name; do
+    v=${v%.*}
+    [[ $v =~ ^[0-9]+$ ]] || continue
+    (( v > any )) && any=$v
+    [[ $kind == cpu ]] && (( v > cpu )) && cpu=$v
+  done
+  if (( cpu >= 0 )); then S_TEMP=$cpu S_TEMP_SRC=CPU
+  elif (( any >= 0 )); then S_TEMP=$any S_TEMP_SRC="hottest sensor"
+  else S_TEMP="" S_TEMP_SRC=""; fi
+}
+
+sys_sensors_report() { # `g3rm0n sensors`: every readable sensor, and which one Temp shows
+  local kind v name n=0
+  local -a lines=()
+  mapfile -t lines < <(plat_sensors | sort -t $'\t' -k1,1 -k2,2nr)
+  printf '%s\n' "${c_bold}Temperature sensors g3rm0n can read${c_off} ${c_dim}(${G3_PLATFORM})${c_off}"
+  for kind in "${lines[@]}"; do
+    IFS=$'\t' read -r kind v name <<<"$kind"
+    printf '  %-6s %6s°C  %s\n' "${kind/cpu/CPU}" "$v" "$name"
+    n=$(( n + 1 ))
+  done
+  if (( n == 0 )); then
+    printf '  %s\n' "${c_dim}none readable on this machine: the Power panel shows \"no sensors exposed\"${c_off}"
+    return 0
+  fi
+  sys_temp_pick < <(printf '%s\n' "${lines[@]}")
+  printf '\n  %s\n' "Temp shows ${c_bold}${S_TEMP}°C${c_off} ${c_dim}(${S_TEMP_SRC}: the hottest $( [[ $S_TEMP_SRC == CPU ]] && echo "CPU sensor" || echo "sensor, as none is named CPU"))${c_off}"
 }
 
 # ---- health ------------------------------------------------------------------
@@ -147,7 +181,7 @@ sys_panel_power() {
   if [[ -n $S_TEMP ]]; then
     local tone=$c_green
     (( S_TEMP >= 70 )) && tone=$c_yellow; (( S_TEMP >= 85 )) && tone=$c_red
-    PANEL_BODY+=("$(ui_label Temp)${tone}${S_TEMP}°C${c_off} ${c_dim}hottest sensor${c_off}")
+    PANEL_BODY+=("$(ui_label Temp)${tone}${S_TEMP}°C${c_off} ${c_dim}${S_TEMP_SRC}${c_off}")
   else
     PANEL_BODY+=("$(ui_label Temp)${c_dim}no sensors exposed${c_off}")
   fi

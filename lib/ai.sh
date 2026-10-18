@@ -17,7 +17,11 @@
 # Adding a provider: entries in AI_NAME/AI_KIND (+ AI_ENV or ai_default_file), then
 # ai_fetch_<id> (sets AI_CODE and AI_ROW) and ai_hint_<id>.
 
-AI_TTL=60   # seconds between API calls per provider; frames redraw from the cache
+AI_TTL=60            # default seconds between API calls per provider; frames redraw from the cache
+AI_BACKOFF_MAX=3600  # longest wait after repeated rate limits (a Retry-After may ask for more)
+# Providers whose usage endpoint is strict get a longer default. Claude's limits move
+# slowly (5-hour and weekly windows), and its endpoint rate-limits frequent callers.
+declare -gA AI_REFRESH=([claude]=300)
 AI_DIR="$G3_CACHE_DIR/ai"
 
 declare -gA AI_NAME=([claude]="Claude" [codex]="Codex" [zai]="Z.ai" [deepseek]="DeepSeek" [openrouter]="OpenRouter")
@@ -87,12 +91,18 @@ ai_secret() { # id jq-path -> secret from the provider's referenced credential
 
 # ---- transport ---------------------------------------------------------------
 
-ai_get() { # url header-lines -> AI_BODY AI_CODE
-  # headers travel on stdin so tokens never appear in the process list
-  local out
-  out=$(curl -s -m 6 -w '\n%{http_code}' -H @- "$1" <<<"$2")
-  AI_CODE=${out##*$'\n'} AI_BODY=${out%$'\n'*}
+ai_get() { # url header-lines -> AI_BODY AI_CODE AI_RETRY_AFTER
+  # request headers travel on stdin so tokens never appear in the process list;
+  # response headers come first (-D -) so a 429's Retry-After can be honoured
+  local out hdr re=$'(^|\n)[Rr][Ee][Tt][Rr][Yy]-[Aa][Ff][Tt][Ee][Rr]:[[:space:]]*([0-9]+)'
+  out=$(curl -s -m 6 -D - -w '\n%{http_code}' -H @- "$1" <<<"$2")
+  AI_CODE=${out##*$'\n'} out=${out%$'\n'*}
   [[ $AI_CODE =~ ^[0-9]+$ ]] || AI_CODE=000
+  hdr=${out%%$'\r\n\r\n'*}
+  if [[ $hdr != "$out" ]]; then AI_BODY=${out#*$'\r\n\r\n'}; else AI_BODY=$out hdr=""; fi
+  AI_RETRY_AFTER=""
+  [[ $hdr =~ $re ]] && AI_RETRY_AFTER=${BASH_REMATCH[2]}
+  return 0
 }
 
 # ISO 8601 ("2026-10-18T17:00:00.123+00:00", "...Z") -> epoch seconds, in jq so it
@@ -203,21 +213,61 @@ ai_hint_openrouter() { printf 'check %s' "$(ai_ref openrouter | sed 's/^env://')
 
 # ---- cache + background refresh ----------------------------------------------
 
-ai_stale() { # id -> true when the last attempt is older than AI_TTL (5x after a 429)
-  local f=$AI_DIR/$1.status t code="" ttl=$AI_TTL
+ai_ttl() { # id -> seconds between calls: config <id>.refresh, else AI_REFRESH, else AI_TTL (60 at least)
+  local v=${CFG[$1.refresh]:-}
+  [[ $v =~ ^[0-9]+$ ]] || v=${AI_REFRESH[$1]:-$AI_TTL}   # unset or not a number: the default
+  (( v < 60 )) && v=60
+  printf '%d' "$v"
+}
+
+# AI_DIR/<id>.status holds "code next-attempt-epoch consecutive-429s". It is shared by
+# every running g3rm0n, so they all wait for the same next attempt.
+ai_stale() { # id -> true when the provider may be called again
+  local f=$AI_DIR/$1.status t code="" next="" ttl
   [[ -e $f ]] || return 0
-  read -r code <"$f" 2>/dev/null
-  [[ $code == 429 ]] && ttl=$(( AI_TTL * 5 ))
+  read -r code next _ <"$f" 2>/dev/null
+  if [[ $next =~ ^[0-9]+$ ]] && (( next > 0 )); then (( EPOCHSECONDS >= next )); return; fi
+  # a status file from before 0.1.6 holds only the code
+  ttl=$(ai_ttl "$1"); [[ $code == 429 ]] && ttl=$(( ttl * 5 ))
   t=$(plat_mtime "$f"); t=${t:-0}
   (( EPOCHSECONDS - t >= ttl ))
 }
 
+ai_backoff() { # id consecutive-429s retry-after -> seconds to wait after a rate limit
+  local ttl base wait n=$2
+  ttl=$(ai_ttl "$1"); base=$(( ttl > 300 ? ttl : 300 ))
+  wait=$base
+  while (( n > 1 && wait < AI_BACKOFF_MAX )); do wait=$(( wait * 2 )); n=$(( n - 1 )); done
+  (( wait > AI_BACKOFF_MAX )) && wait=$AI_BACKOFF_MAX
+  # the server's own Retry-After wins when it asks for longer (capped at 6 hours)
+  if [[ $3 =~ ^[0-9]+$ ]] && (( $3 > wait )); then wait=$(( $3 < 21600 ? $3 : 21600 )); fi
+  printf '%d' "$wait"
+}
+
 ai_refresh() { # id -> AI_DIR/<id>.row (only on success) and AI_DIR/<id>.status
-  local AI_CODE="" AI_BODY="" AI_ROW=""
+  local id=$1 AI_CODE="" AI_BODY="" AI_ROW="" AI_RETRY_AFTER="" lock t
+  local pcode="" pnext="" pfails="" fails=0 next
   mkdir -p "$AI_DIR" && chmod 700 "$AI_DIR"
-  "ai_fetch_$1"
-  [[ $AI_CODE == 200 && -n $AI_ROW ]] && printf '%s\n' "$AI_ROW" >"$AI_DIR/$1.row"
-  printf '%s\n' "$AI_CODE" >"$AI_DIR/$1.status"
+  # one refresh per provider at a time, across every running g3rm0n
+  lock=$AI_DIR/$id.lock
+  if ! mkdir "$lock" 2>/dev/null; then
+    t=$(plat_mtime "$lock"); (( EPOCHSECONDS - ${t:-0} < 60 )) && return 0
+    rm -rf "$lock"; mkdir "$lock" 2>/dev/null || return 0   # a lock left by a killed run
+  fi
+  if ! ai_stale "$id"; then rmdir "$lock" 2>/dev/null; return 0; fi   # someone just did it
+  "ai_fetch_$id"
+  [[ -r $AI_DIR/$id.status ]] && read -r pcode pnext pfails <"$AI_DIR/$id.status"
+  if [[ $AI_CODE == 429 ]]; then
+    [[ $pcode == 429 && $pfails =~ ^[0-9]+$ ]] && fails=$pfails
+    fails=$(( fails + 1 ))
+    next=$(( EPOCHSECONDS + $(ai_backoff "$id" "$fails" "$AI_RETRY_AFTER") ))
+  else
+    next=$(( EPOCHSECONDS + $(ai_ttl "$id") ))
+  fi
+  [[ $AI_CODE == 200 && -n $AI_ROW ]] && printf '%s\n' "$AI_ROW" >"$AI_DIR/$id.row"
+  printf '%s %s %s\n' "$AI_CODE" "$next" "$fails" >"$AI_DIR/$id.status.$$" && mv -f "$AI_DIR/$id.status.$$" "$AI_DIR/$id.status"
+  rmdir "$lock" 2>/dev/null
+  return 0
 }
 
 ai_tick() { # id [sync] -> start a refresh when due; never blocks a live frame
@@ -246,9 +296,15 @@ ai_money() { # currency amount -> "$8.20" / "¥12.34" / "12.34 EUR"; "-" passes 
 }
 
 ai_window_row() { # pct window reset_epoch
-  local note="window idle"
-  (( $3 > 0 )) && note="resets in $(g3_duration $(( $3 - EPOCHSECONDS )))"
-  printf '%s%s %s %s' "$(ui_label "$(ai_win_label "$2")")" "$(ui_bar "$1" 10)" "$(ui_pct "$1")" "${c_dim}· ${note}${c_off}"
+  local note="window idle" pct=$1
+  if (( $3 > 0 && $3 <= EPOCHSECONDS )); then
+    # the cached window has reset since it was read: a new one starts empty (an
+    # estimate, marked "~", until the next successful refresh)
+    pct="~0" note="new window · reset $(g3_ago $(( EPOCHSECONDS - $3 ))) ago"
+  elif (( $3 > 0 )); then
+    note="resets in $(g3_duration $(( $3 - EPOCHSECONDS )))"
+  fi
+  printf '%s%s %s %s' "$(ui_label "$(ai_win_label "$2")")" "$(ui_bar "${pct#\~}" 10)" "$(ui_pct "$pct")" "${c_dim}· ${note}${c_off}"
 }
 
 ai_title() { # id -> "AI Tokens · Claude" / "AI Credits · OpenRouter"
@@ -257,40 +313,57 @@ ai_title() { # id -> "AI Tokens · Claude" / "AI Credits · OpenRouter"
 }
 ai_icon() { if [[ ${AI_KIND[$1]} == credits ]]; then printf '◆'; else printf '✦'; fi; }
 
-ai_panel() { # id -> PANEL_BODY + PANEL_SUM in the standard layout for its kind (panel.sh renderer)
-  local id=$1 kind=${AI_KIND[$1]} status="" what="Login" bad="expired"
+# ai_panel id -> PANEL_BODY + PANEL_SUM in the standard layout for its kind.
+# Cached numbers always stay on screen. When they aren't fresh, the panel says how
+# old they are and when the next attempt is ("12m ago · retry 4m"), instead of
+# hiding them behind an error; a Status row appears only when there is nothing to
+# show yet, or when the user has to act (login expired or missing).
+ai_panel() {
+  local id=$1 kind=${AI_KIND[$1]} code="" next="" what="Login" bad="expired" note="" age wait
   [[ $kind == credits ]] && { what="Key"; bad="rejected"; }
   PANEL_BODY=() PANEL_SUM=""
-  [[ -r $AI_DIR/$id.status ]] && read -r status <"$AI_DIR/$id.status"
-  case $status in
+  [[ -r $AI_DIR/$id.status ]] && read -r code next _ <"$AI_DIR/$id.status"
+  [[ $next =~ ^[0-9]+$ ]] || next=0
+  wait=$(( next > EPOCHSECONDS ? next - EPOCHSECONDS : 0 ))
+  case $code in
     401|403) PANEL_BODY+=("$(ui_label "$what")${c_yellow}${bad}${c_off} ${c_dim}· $("ai_hint_$id")${c_off}")
              PANEL_SUM="${c_yellow}${what,,} ${bad}${c_off}" ;;
     nologin) PANEL_BODY+=("$(ui_label "$what")${c_dim}missing · $("ai_hint_$id")${c_off}")
              PANEL_SUM="${what,,} missing" ;;
-    000)     PANEL_BODY+=("$(ui_label Status)${c_dim}offline · retrying${c_off}")
-             PANEL_SUM="offline" ;;
-    429)     PANEL_BODY+=("$(ui_label Status)${c_yellow}rate limited${c_off} ${c_dim}· retrying in $(( AI_TTL * 5 / 60 ))m${c_off}")
-             PANEL_SUM="${c_yellow}rate limited${c_off}" ;;
   esac
   if [[ ! -r $AI_DIR/$id.row ]]; then
-    [[ $status == @(401|403|nologin|000|429) ]] || { PANEL_BODY+=("${c_dim}fetching usage…${c_off}"); PANEL_SUM="fetching…"; }
+    case $code in
+      000) PANEL_BODY+=("$(ui_label Status)${c_dim}offline · retrying${c_off}"); PANEL_SUM="offline" ;;
+      429) PANEL_BODY+=("$(ui_label Status)${c_yellow}rate limited${c_off} ${c_dim}· retrying in $(g3_ago "$wait")${c_off}")
+           PANEL_SUM="${c_yellow}rate limited${c_off}" ;;
+      401|403|nologin) ;;
+      *) PANEL_BODY+=("${c_dim}fetching usage…${c_off}"); PANEL_SUM="fetching…" ;;
+    esac
     return
   fi
-  local age stale=""
   age=$(plat_mtime "$AI_DIR/$id.row"); age=$(( EPOCHSECONDS - ${age:-$EPOCHSECONDS} ))
-  (( age > AI_TTL * 5 )) && stale="${c_yellow}· stale $(( age / 60 ))m${c_off}"
+  if [[ $code != 200 ]] || (( age > 2 * $(ai_ttl "$id") )); then
+    note="${c_dim}· $(g3_ago "$age") ago${c_off}"
+    case $code in
+      429) note+=" ${c_dim}·${c_off} ${c_yellow}retry $(g3_ago "$wait")${c_off}" ;;
+      000) note+=" ${c_dim}· offline${c_off}" ;;
+    esac
+  fi
   "ai_body_$kind" "$id"
 }
 
 ai_body_tokens() { # appends to PANEL_BODY: both windows, then headroom in the short one
-  local plan p1 w1 r1 p2 w2 r2 left
+  local plan p1 w1 r1 p2 w2 r2 left est=""
   IFS=$'\t' read -r plan p1 w1 r1 p2 w2 r2 <"$AI_DIR/$1.row"
   PANEL_BODY+=("$(ai_window_row "$p1" "$w1" "$r1")")
   PANEL_BODY+=("$(ai_window_row "$p2" "$w2" "$r2")")
+  # a window that has reset since the last read starts over (estimate until refreshed)
+  (( r1 > 0 && r1 <= EPOCHSECONDS )) && { p1=0; est="~"; }
+  (( r2 > 0 && r2 <= EPOCHSECONDS )) && p2=0
   left=$(( 100 - ${p1%.*} )); (( left < 0 )) && left=0
-  PANEL_BODY+=("$(ui_label Left)${c_bold}${left}%${c_off} of $(ai_win_label "$w1") window ${stale:-${c_dim}· ${plan} plan${c_off}}")
+  PANEL_BODY+=("$(ui_label Left)${c_bold}${est}${left}%${c_off} of $(ai_win_label "$w1") window ${note:-${c_dim}· ${plan} plan${c_off}}")
   local l2; l2=$(ai_win_label "$w2"); [[ $l2 == Week ]] && l2=wk
-  [[ -n $PANEL_SUM ]] || PANEL_SUM="$(ai_win_label "$w1") $(ui_tone "${p1%.*}")${p1%.*}%${c_off} · ${l2,,} ${p2%.*}%"
+  [[ -n $PANEL_SUM ]] || PANEL_SUM="$(ai_win_label "$w1") $(ui_tone "${p1%.*}")${est}${p1%.*}%${c_off} · ${l2,,} ${p2%.*}%"
 }
 
 ai_body_credits() { # appends to PANEL_BODY: balance, spend, provider detail
@@ -298,15 +371,18 @@ ai_body_credits() { # appends to PANEL_BODY: balance, spend, provider detail
   IFS=$'\t' read -r cur left total day week month label detail <"$AI_DIR/$1.row"
   if [[ $total != - && $left != - ]] && awk -v t="$total" 'BEGIN { exit !(t > 0) }'; then
     pct=$(awk -v l="$left" -v t="$total" 'BEGIN { p = (t - l) * 100 / t; if (p < 0) p = 0; printf "%d", p }')
-    PANEL_BODY+=("$(ui_label Spent)$(ui_bar "$pct" 10) $(ui_pct "$pct") ${c_dim}·${c_off} ${c_bold}$(ai_money "$cur" "$left")${c_off}${c_dim} left of $(ai_money "$cur" "$total")${c_off}${stale:+ $stale}")
+    PANEL_BODY+=("$(ui_label Spent)$(ui_bar "$pct" 10) $(ui_pct "$pct") ${c_dim}·${c_off} ${c_bold}$(ai_money "$cur" "$left")${c_off}${c_dim} left of $(ai_money "$cur" "$total")${c_off}")
   else
-    PANEL_BODY+=("$(ui_label Left)${c_bold}$(ai_money "$cur" "$left")${c_off} ${stale:-${c_dim}· prepaid balance${c_off}}")
+    PANEL_BODY+=("$(ui_label Left)${c_bold}$(ai_money "$cur" "$left")${c_off} ${c_dim}· prepaid balance${c_off}")
   fi
   if [[ $day == - && $week == - && $month == - ]]; then
     PANEL_BODY+=("$(ui_label Usage)${c_dim}not reported by this API${c_off}")
   else
     PANEL_BODY+=("$(ui_label Usage)$(ai_money "$cur" "$day") ${c_dim}day ·${c_off} $(ai_money "$cur" "$week") ${c_dim}wk ·${c_off} $(ai_money "$cur" "$month") ${c_dim}mo${c_off}")
   fi
-  PANEL_BODY+=("$(ui_label "$label")${c_dim}${detail}${c_off}")
+  # numbers that aren't fresh say so in the last row ("Status 12m ago · retry 4m"),
+  # which keeps every row inside the panel width
+  if [[ -n $note ]]; then PANEL_BODY+=("$(ui_label Status)${note/#${c_dim}· /${c_dim}}")
+  else PANEL_BODY+=("$(ui_label "$label")${c_dim}${detail}${c_off}"); fi
   [[ -n $PANEL_SUM ]] || PANEL_SUM="$(ai_money "$cur" "$left") left"
 }

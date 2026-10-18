@@ -69,6 +69,7 @@ ${c_bold}g3rm0n${c_off} v$G3_VERSION — live terminal dashboard for your machin
 ${c_bold}Usage${c_off}
   g3rm0n [options]          open the live dashboard (see Keys below)
   g3rm0n setup [option]     choose sections and AI providers (see: g3rm0n setup --help)
+  g3rm0n sensors            list the temperature sensors g3rm0n can read
   g3rm0n version            print the version
   g3rm0n help               show this help
 
@@ -99,6 +100,7 @@ main() {
   case ${1:-} in
     setup)   g3_colors; shift; setup_run "$@"; return ;;
     version|-V|--version) printf 'g3rm0n %s\n' "$G3_VERSION"; return ;;
+    sensors) g3_colors; sys_sensors_report; return ;;
     help|-h|--help) g3_colors; usage; return ;;
   esac
   while (( $# )); do

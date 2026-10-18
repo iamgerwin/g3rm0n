@@ -6,6 +6,46 @@ All notable changes to g3rm0n are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **Claude: far fewer "rate limited" states.** Claude's usage endpoint limits frequent
+  callers, and g3rm0n asked it every minute, once per open window. Now:
+  - Claude is asked every 5 minutes; its 5-hour and weekly numbers move slowly.
+    Change this with `claude.refresh` in the config (any provider; never below 60
+    seconds).
+  - After a rate limit, g3rm0n follows the server's `Retry-After`, or else waits 5,
+    then 10, 20 and up to 60 minutes, and returns to normal after a success.
+  - Only one g3rm0n at a time calls a provider, and all open windows share its
+    result.
+- **Rate limited or offline no longer hides your numbers.** The last good reading
+  stays on screen with how old it is and when the next try is (`12m ago · retry 4m`),
+  instead of a `Status rate limited` row and `stale`. If a window resets while
+  g3rm0n waits, the new window is shown as an estimate (`~0%`, `new window`) until
+  the next reading.
+- **macOS: CPU temperature on Apple silicon.** The Power panel showed `no sensors
+  exposed` on M-series Macs. g3rm0n now reads the IOKit temperature sensors, the same
+  unprivileged source iStat Menus uses, through JavaScript for Automation. No install
+  and no root are needed. Intel Macs still show `no sensors exposed`, because their
+  sensors sit in the SMC.
+
+### Added
+
+- `g3rm0n sensors` lists every temperature sensor g3rm0n can read, and which one the
+  Temp row shows.
+- `<provider>.refresh` in the config sets how often that provider is asked, in seconds.
+
+### Changed
+
+- The Temp row prefers the CPU: it shows the hottest CPU sensor, labelled `CPU`, when
+  the machine names one (Apple silicon clusters and dies; `coretemp`, `k10temp`,
+  `x86_pkg_temp` and similar on Linux). Otherwise it shows the hottest sensor, as
+  before, labelled `hottest sensor`.
+- For contributors:
+  - New suite `tests/ai.sh` covers refresh intervals, backoff, `Retry-After`, the
+    shared lock, the panel while rate limited, and window resets.
+  - The macOS fixtures cover the IOKit sensors, and `plat_sensors` joins the
+    platform contract.
+
 ## [0.1.5] - 2026-10-18
 
 ### Fixed

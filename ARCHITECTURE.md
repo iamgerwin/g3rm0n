@@ -87,7 +87,8 @@ into rates, panels and the health score, so features can't differ between platfo
 | `plat_mem` | `S_MEM_T` `S_MEM_A` `S_CACHE` `S_SWAP_T` `S_SWAP_F` (bytes) | `/proc/meminfo` | `vm_stat`, `sysctl` |
 | `plat_net_bytes` | `NET_RX` `NET_TX` (cumulative bytes) | `/proc/net/dev` | `netstat -ibn` |
 | `plat_disk_bytes` | `DIO_R` `DIO_W` (cumulative bytes) | `/proc/diskstats` | `ioreg` block storage statistics |
-| `plat_temp` | prints °C, or nothing | thermal zones, hwmon | nothing (root only) |
+| `plat_temp` | prints this frame's sensor lines (see `plat_sensors`) | `plat_sensors` (sysfs is instant) | the last background reading |
+| `plat_sensors` | prints `kind °C name` per temperature sensor, `kind` = `cpu` or `other` | thermal zones, hwmon (`coretemp`, `k10temp`, … are CPU) | IOKit HID sensors via JavaScript for Automation (`pACC`/`eACC` clusters and `tdie` dies are CPU) |
 | `plat_uptime` | `S_UP` (seconds) | `/proc/uptime` | `sysctl kern.boottime` |
 | `plat_root_pct` | `S_ROOT_P` `S_ROOT_LABEL` (health score, folded Disk title) | `df /`, labelled `/` | `df` of the data volume, labelled `~` |
 | `plat_disks` | prints `mount fstype size used pct` rows | `df -B1 --output` | `df -kP`, `mount` |

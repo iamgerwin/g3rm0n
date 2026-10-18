@@ -59,10 +59,17 @@ jobs:
       - name: ShellCheck
         if: runner.os == 'Linux'
         run: shellcheck -x g3rm0n install.sh lib/*.sh lib/platform/*.sh completions/g3rm0n.bash tests/*.sh tests/lib/*.sh tests/mock/curl scripts/*.sh .githooks/* .claude/hooks/*.sh
+      - name: Temperature sensors on this runner (informational)
+        if: runner.os == 'macOS'
+        run: |
+          bash -c 'source lib/platform/darwin.sh; osascript -l JavaScript <<<"$DW_SENSORS_JS"; echo "osascript exit=$?"'
+          ./g3rm0n sensors
       - name: Smoke tests
         run: tests/smoke.sh
       - name: Platform tests (contract, macOS fixtures, native backend)
         run: tests/platform.sh
+      - name: AI refresh tests (intervals, rate limits, cache)
+        run: tests/ai.sh
       - name: Cross-shell tests (bash, zsh, fish, dash, ksh, mksh, tcsh, busybox)
         run: tests/shells.sh
       - name: Interaction tests (folding, keys, mouse in a pseudo-terminal)

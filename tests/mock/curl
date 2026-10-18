@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Mock curl for tests: canned, synthetic responses for every AI provider endpoint.
-# Mirrors how ai_get calls curl: headers on stdin (-H @-), "-w \n%{http_code}".
-# A bearer token of "bad" yields HTTP 401. Never put real data in here.
+# Mirrors how ai_get calls curl: headers on stdin (-H @-), response headers first
+# when asked for (-D -), then the body and "\n<status>" (-w \n%{http_code}).
+# Bearer tokens pick a scenario: "bad" -> 401, "ratelimited" -> 429 with
+# Retry-After: 1800, "ratelimited-noheader" -> 429 without one. Set G3_MOCK_LOG to a
+# file to record one line per API request. Never put real data in here.
 # Release lookups (install.sh): G3_MOCK_GITHUB=ok (default) | noredirect | down
 headers=""
 [[ " $* " == *" -H @- "* ]] && headers=$(cat)
@@ -23,10 +26,20 @@ case $url in
     exit 0 ;;
 esac
 
-if [[ $headers == *"Bearer bad"* ]]; then
-  printf '%s\n401' '{"error":"unauthorized"}'
+dump=0; [[ " $* " == *" -D - "* ]] && dump=1
+reply() { # status body [header-line] : what curl prints with -D - and -w '\n%{http_code}'
+  [[ -n ${G3_MOCK_LOG:-} ]] && printf '%s %s\n' "$1" "$url" >>"$G3_MOCK_LOG"
+  if (( dump )); then
+    printf 'HTTP/2 %s\r\ncontent-type: application/json\r\n' "$1"
+    [[ -n ${3:-} ]] && printf '%s\r\n' "$3"
+    printf '\r\n'
+  fi
+  printf '%s\n%s' "$2" "$1"
   exit 0
-fi
+}
+[[ $headers == *"Bearer bad"* ]] && reply 401 '{"error":"unauthorized"}'
+[[ $headers == *"Bearer ratelimited-noheader"* ]] && reply 429 '{"error":{"type":"rate_limit_error"}}'
+[[ $headers == *"Bearer ratelimited"* ]] && reply 429 '{"error":{"type":"rate_limit_error"}}' 'retry-after: 1800'
 
 # shellcheck source=tests/lib/common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
@@ -51,6 +64,6 @@ case $url in
            "usage_daily":0.42,"usage_weekly":3.1,"usage_monthly":12.5,"is_free_tier":false}}' ;;
   *openrouter.ai/api/v1/credits)
     body='{"data":{"total_credits":25,"total_usage":16.8}}' ;;
-  *) printf '%s\n404' '{}'; exit 0 ;;
+  *) reply 404 '{}' ;;
 esac
-printf '%s\n200' "$body"
+reply 200 "$body"
