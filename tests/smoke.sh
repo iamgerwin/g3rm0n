@@ -13,7 +13,7 @@ pass=0 fail=0
 check() { # description command...
   local desc=$1; shift
   if "$@" >/dev/null 2>&1; then pass=$(( pass + 1 )); printf '  ok    %s\n' "$desc"
-  else fail=$(( fail + 1 )); printf '  FAIL  %s\n' "$desc"; fi
+  else fail=$(( fail + 1 )); printf '  FAIL  %s\n' "$desc"; show_on_fail "${out:-}"; fi
 }
 contains() { grep -qF -- "$2" <<<"$1"; }
 lacks()    { ! grep -qF -- "$2" <<<"$1"; }
