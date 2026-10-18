@@ -153,9 +153,10 @@ fi
 
 # ---- one-shot output with --fold -------------------------------------------------------
 out=$("$root/g3rm0n" --once --no-ai --fold all 2>&1)
-check "once: --fold all leaves one line per panel" bash -c "[[ \$(grep -c '^▸' <<<\"\$1\") == 6 ]] && ! grep -q '^Usage' <<<\"\$1\"" _ "$out"
+# folded titles can sit in either column, depending on the width the runner reports
+check "once: --fold all leaves one line per panel" bash -c "[[ \$(grep -o '▸ ' <<<\"\$1\" | wc -l) == 6 ]] && ! grep -q 'Usage' <<<\"\$1\"" _ "$out"
 out=$("$root/g3rm0n" --once --no-ai -f memory 2>&1)
-check "once: -f folds one section"          bash -c "grep -q '^▸ ◫ Memory · ' <<<\"\$1\" && grep -q '^Usage' <<<\"\$1\"" _ "$out"
+check "once: -f folds one section"          bash -c "grep -q '▸ ◫ Memory · ' <<<\"\$1\" && grep -q '^Usage' <<<\"\$1\"" _ "$out"
 out=$("$root/g3rm0n" --once --no-ai 2>&1)
 check "once: saved folds don't leak into scripts" lacks "$out" "▸"
 
