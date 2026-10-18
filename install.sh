@@ -3,7 +3,7 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/iamgerwin/g3rm0n/main/install.sh | bash
 #   ./install.sh                 from a git checkout: links the checkout (live-editable)
-#   ./install.sh --version 0.1.0 install a specific release
+#   ./install.sh --version 0.1.1 install a specific release
 #   ./install.sh --uninstall     remove g3rm0n (your config is kept)
 
 # Piped into sh/dash/zsh instead of bash? Stop before any bash syntax is parsed.
@@ -32,7 +32,7 @@ Install g3rm0n for the current user (no root needed).
 
   curl -fsSL https://raw.githubusercontent.com/iamgerwin/g3rm0n/main/install.sh | bash
   ./install.sh                 from a git checkout: links the checkout (live-editable)
-  ./install.sh --version 0.1.0 install a specific release
+  ./install.sh --version 0.1.1 install a specific release
   ./install.sh --uninstall     remove g3rm0n (your config is kept)
 USAGE
 }

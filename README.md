@@ -86,7 +86,7 @@ Other ways:
 
 ```bash
 # a specific version
-curl -fsSL https://raw.githubusercontent.com/iamgerwin/g3rm0n/main/install.sh | bash -s -- --version 0.1.0
+curl -fsSL https://raw.githubusercontent.com/iamgerwin/g3rm0n/main/install.sh | bash -s -- --version 0.1.1
 
 # from a clone (links the checkout, handy for development)
 git clone https://github.com/iamgerwin/g3rm0n && cd g3rm0n && ./install.sh
