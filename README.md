@@ -79,7 +79,7 @@ Left   ¥110.00 · prepaid balance                Spent  ███████�
 Usage  not reported by this API                 Usage  $0.42 day · $3.10 wk · $12.50 mo
 Split  topped up ¥100.00 · granted ¥10.00       Key    no spend cap
 
-g3rm0n v0.1.6 · every 2s · 1-8 or click a title to fold · -/+ all · r refresh · q quit
+g3rm0n v0.1.7 · every 2s · 1-8 or click a title to fold · -/+ all · r refresh · q quit
 ```
 <!-- /sample -->
 
@@ -167,7 +167,7 @@ Other ways:
 
 ```bash
 # a specific version
-curl -fsSL https://raw.githubusercontent.com/iamgerwin/g3rm0n/main/install.sh | bash -s -- --version 0.1.6
+curl -fsSL https://raw.githubusercontent.com/iamgerwin/g3rm0n/main/install.sh | bash -s -- --version 0.1.7
 
 # offline, from an unpacked release (or a clone), copying only the run-time files
 ./install.sh --from ~/Downloads/g3rm0n
