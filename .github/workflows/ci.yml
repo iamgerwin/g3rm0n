@@ -63,6 +63,13 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           bash -c 'source lib/platform/darwin.sh; osascript -l JavaScript <<<"$DW_SENSORS_JS"; echo "osascript exit=$?"'
+          # each step of the IOKit path: client, services, temperature events
+          bash -c 'source lib/platform/darwin.sh
+            js=${DW_SENSORS_JS/'var client = '/'var dbg = []; var client = '}
+            js=${js/'if (!client || client.isNil()) return "";'/'dbg.push("client " + (client && !client.isNil())); if (!client || client.isNil()) return dbg.join(" ");'}
+            js=${js/'if (!list || list.isNil()) return "";'/'dbg.push("services " + ((list && !list.isNil()) ? list.count : "nil")); if (!list || list.isNil()) return dbg.join(" ");'}
+            js=${js/'return out.join("\n");'/'return dbg.join(" ") + " readings " + out.length;'}
+            osascript -l JavaScript <<<"$js"; echo "debug exit=$?"'
           ./g3rm0n sensors
       - name: Smoke tests
         run: tests/smoke.sh
