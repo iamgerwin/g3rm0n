@@ -1,0 +1,5 @@
+# never commit credentials or local state
+.env
+.env.*
+*.log
+.cache/

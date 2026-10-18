@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: bash -n g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/smoke.sh tests/mock/curl
+      - name: ShellCheck
+        run: shellcheck -x g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/smoke.sh tests/mock/curl
+      - name: Smoke tests
+        run: tests/smoke.sh
+      - name: Installer (from checkout, clean HOME)
+        run: |
+          export HOME=$(mktemp -d)
+          ./install.sh
+          "$HOME/.local/bin/g3rm0n" version
+          ./install.sh --uninstall
+          test ! -e "$HOME/.local/bin/g3rm0n"

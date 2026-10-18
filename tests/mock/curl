@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Mock curl for tests: canned, synthetic responses for every AI provider endpoint.
+# Mirrors how ai_get calls curl: headers on stdin (-H @-), "-w \n%{http_code}".
+# A bearer token of "bad" yields HTTP 401. Never put real data in here.
+headers=$(cat)
+url=""
+for a in "$@"; do [[ $a == https://* ]] && url=$a; done
+
+if [[ $headers == *"Bearer bad"* ]]; then
+  printf '%s\n401' '{"error":"unauthorized"}'
+  exit 0
+fi
+
+now=$(date +%s)
+case $url in
+  *api.anthropic.com/api/oauth/usage)
+    body='{"five_hour":{"utilization":42.0,"resets_at":"'$(date -u -d "@$((now + 7200))" +%FT%T)'+00:00"},
+           "seven_day":{"utilization":17.0,"resets_at":"'$(date -u -d "@$((now + 259200))" +%FT%T)'+00:00"}}' ;;
+  *chatgpt.com/backend-api/wham/usage)
+    body='{"plan_type":"plus","rate_limit":{
+           "primary_window":{"used_percent":12,"limit_window_seconds":18000,"reset_at":'$((now + 9000))'},
+           "secondary_window":{"used_percent":3,"limit_window_seconds":604800,"reset_at":'$((now + 500000))'}}}' ;;
+  *api.z.ai/api/monitor/usage/quota/limit)
+    body='{"code":200,"data":{"level":"lite","limits":[
+           {"type":"TOKENS_LIMIT","unit":3,"percentage":64,"nextResetTime":'$(( (now + 3600) * 1000 ))'},
+           {"type":"TIME_LIMIT","unit":5,"percentage":10,"nextResetTime":'$(( (now + 864000) * 1000 ))'}]}}' ;;
+  *api.deepseek.com/user/balance)
+    body='{"is_available":true,"balance_infos":[{"currency":"CNY","total_balance":"110.00",
+           "granted_balance":"10.00","topped_up_balance":"100.00"}]}' ;;
+  *openrouter.ai/api/v1/key)
+    body='{"data":{"label":"sk-or-v1-placeholder","limit":null,"limit_remaining":null,"usage":12.5,
+           "usage_daily":0.42,"usage_weekly":3.1,"usage_monthly":12.5,"is_free_tier":false}}' ;;
+  *openrouter.ai/api/v1/credits)
+    body='{"data":{"total_credits":25,"total_usage":16.8}}' ;;
+  *) printf '%s\n404' '{}'; exit 0 ;;
+esac
+printf '%s\n200' "$body"
