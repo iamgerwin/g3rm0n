@@ -19,7 +19,7 @@ the code disagree, the rule wins: fix the code or propose a change to the rule.
 1. g3rm0n **only observes**. It never changes the system it runs on.
 2. Credentials are **referenced, never stored**, and only ever sent to their own provider.
 3. Every panel follows the **same layout**: 46 columns wide, a 7-column label column, one fact per row.
-4. `bash -n`, `shellcheck` and `tests/smoke.sh` must all pass.
+4. `bash -n`, `shellcheck`, `tests/smoke.sh` and `tests/shells.sh` must all pass.
 5. One logical change per commit, written in the imperative mood, authored by the person responsible for it.
 
 ## For automated agents

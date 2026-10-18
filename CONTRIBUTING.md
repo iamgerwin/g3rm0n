@@ -9,9 +9,10 @@ read it before you start.
 4. Run the [tests](rules/06-testing.md):
 
    ```bash
-   bash -n g3rm0n install.sh lib/*.sh completions/g3rm0n.bash
-   shellcheck -x g3rm0n install.sh lib/*.sh completions/g3rm0n.bash
+   bash -n g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/*.sh
+   shellcheck -x g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/*.sh
    tests/smoke.sh
+   tests/shells.sh   # bash, zsh, fish, dash, ksh, mksh, tcsh; missing shells are skipped
    ```
 
 5. Open a pull request with a [Conventional Commit](rules/07-git-and-releases.md) title,
