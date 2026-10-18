@@ -37,6 +37,8 @@ g3rm0n sits next to credentials for paid services. These rules are not optional.
 
 - Fixtures are synthetic. Never paste a real API response that contains an account
   ID, email address or token; replace those fields with obvious placeholders.
+- The only file the dashboard writes outside the cache is `$G3_STATE_DIR/folded`
+  (panel ids). Keep it that way: no usage numbers, no account data, no credentials.
 - Use the mock in `tests/mock/curl` for provider tests. Tests must never need real keys.
 
 ## Reporting a vulnerability

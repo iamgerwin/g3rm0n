@@ -91,6 +91,11 @@ setup_write() { # sections-string providers-string interval
       [[ $ref == file:* ]] && ref="file:$(g3_tilde "${ref#file:}")"
       printf '%s.credentials = %s\n' "$id" "$ref"
     done
+    # keep settings setup doesn't manage (e.g. mouse = off), exactly as written
+    if [[ -r $G3_CONFIG_FILE ]]; then
+      grep -E '^[[:space:]]*[a-z][a-z0-9_.-]*[[:space:]]*=' "$G3_CONFIG_FILE" \
+        | grep -vE '^[[:space:]]*(sections|interval|providers|[a-z0-9_-]+\.credentials)[[:space:]]*='
+    fi
   } >"$tmp"
   chmod 600 "$tmp"
   mv -f "$tmp" "$G3_CONFIG_FILE"

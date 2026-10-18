@@ -10,12 +10,18 @@ _g3rm0n_sections() {
   _values -s , 'section' cpu memory disk power processes network ai-tokens ai-credits
 }
 
+_g3rm0n_folds() {
+  _values -s , 'fold' cpu memory disk power processes network ai-tokens ai-credits all none
+}
+
 _g3rm0n() {
   local -a opts
   opts=(
     '(-1 --once)'{-1,--once}'[print one snapshot and exit]'
     '(-i --interval)'{-i+,--interval=}'[seconds between refreshes]:seconds: '
     '(-s --sections)'{-s+,--sections=}'[sections for this run]:sections:_g3rm0n_sections'
+    '(-f --fold)'{-f+,--fold=}'[start with these folded]:folds:_g3rm0n_folds'
+    "--no-mouse[don't capture the mouse]"
     '--no-ai[hide AI panels, no network calls]'
     '--no-color[plain output]'
   )

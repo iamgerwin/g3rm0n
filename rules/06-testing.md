@@ -11,8 +11,14 @@ zsh -n completions/_g3rm0n; fish --no-execute completions/g3rm0n.fish   # syntax
 shellcheck -x g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/*.sh   # lint, zero findings
 tests/smoke.sh                                                 # behavior, no network
 tests/shells.sh                                                # every installed shell
+tests/ui.sh                                                    # folding, keys, mouse
 tests/docs.sh                                                  # docs match the code
 ```
+
+`tests/ui.sh` unit-tests the pure pieces of the interactive dashboard (input
+decoding, key bindings, fold state, titles, layout and hit-testing) and then drives
+the live dashboard in a pseudo-terminal with real key presses and SGR mouse clicks.
+Any change to input, keys, folding or panel layout needs a case there.
 
 `tests/docs.sh` is the documentation drift check described in
 [documentation](08-documentation.md); the pre-commit hook runs it with `--staged`.
@@ -32,7 +38,10 @@ completions, needs a case here.
 - `g3rm0n --once` in a terminal at 100 columns and at 60 columns.
 - `g3rm0n --once | cat` prints no escape codes.
 - The live dashboard redraws without flicker or scrolling, `q` quits, and the terminal
-  is restored after `q` and after Ctrl-C.
+  is restored after `q` and after Ctrl-C (no stray characters when you move the mouse
+  afterwards).
+- If you touched folding or input: click titles in at least one terminal, inside tmux
+  with `mouse on`, and with `--no-mouse`.
 - Resizing the window while the dashboard runs redraws cleanly.
 - If you touched setup: `g3rm0n setup` with arrows, space, `a`, enter and `q`, using
   a temporary `XDG_CONFIG_HOME`.

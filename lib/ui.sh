@@ -22,10 +22,22 @@ ui_pad() { # text width -> text right-padded to width
 
 ui_label() { ui_pad "$1" 7; }   # left column of every panel row
 
-ui_title() { # icon text -> "◉ CPU ──────────" spanning the panel width
-  local fill=$(( G3_W - ${#1} - ${#2} - 2 ))
+# ui_title <icon> <name> [marker] [summary] [key] -> one title row, G3_W columns wide:
+#   "◉ CPU ────────────────"                       plain (one-shot output)
+#   "▾ ◉ CPU ──────────── 1"                        live: fold marker and shortcut key
+#   "▸ ◉ CPU · 24% · load 1.12 ──────────── 1"      folded: summary in the title
+# A summary that doesn't fit is left out rather than cut, so colors never break.
+ui_title() {
+  local head="${3:+$3 }$c_bold$1 $2$c_off" tail="${5:+ $c_dim${5:-}$c_off}" sum="" t used fill
+  [[ -n ${4:-} ]] && sum=" $c_dim·$c_off $4"
+  # visible widths, measured in-process (no subshells: this runs for every panel, every frame)
+  t=${head//$'\e'\[*([0-9;])m/}; used=${#t}
+  t=${tail//$'\e'\[*([0-9;])m/}; used=$(( used + ${#t} + 1 ))
+  t=${sum//$'\e'\[*([0-9;])m/}
+  (( used + ${#t} + 2 <= G3_W )) && { head+=$sum; used=$(( used + ${#t} )); }
+  fill=$(( G3_W - used ))
   (( fill < 0 )) && fill=0
-  printf '%s%s %s%s %s%s%s' "$c_bold" "$1" "$2" "$c_off" "$c_dim" "${G3_LINE:0:fill}" "$c_off"
+  printf '%s %s%s%s%s' "$head" "$c_dim" "${G3_LINE:0:fill}" "$c_off" "$tail"
 }
 
 ui_tone() { # pct -> color for that load level
@@ -53,8 +65,9 @@ ui_spark() { # values... -> sparkline scaled to the largest value
 }
 
 # ui_grid cols item... : item = "group:ARRAY". Each ARRAY is one panel (one row per
-# element). Consecutive panels of the same group share a row when the terminal is
-# wide enough; groups never mix. Lines are appended to the global OUT array.
+# element, title first). Consecutive panels of the same group share a row when the
+# terminal is wide enough; groups never mix. Lines are appended to the global OUT
+# array, and each title's position is appended to UI_HITS (for mouse clicks).
 ui_grid() {
   local cols=$1 two=0 i=0 n r h a1 a2 g
   shift
@@ -70,6 +83,9 @@ ui_grid() {
     fi
     local -n _left=$a1
     h=${#_left[@]}
+    # where each panel's title row lands: "out-row first-col last-col array"
+    UI_HITS+=("${#OUT[@]} 0 $(( G3_W - 1 )) $a1")
+    [[ -n $a2 ]] && UI_HITS+=("${#OUT[@]} $(( G3_W + G3_GAP )) $(( G3_W * 2 + G3_GAP - 1 )) $a2")
     if [[ -n $a2 ]]; then
       local -n _right=$a2
       (( ${#_right[@]} > h )) && h=${#_right[@]}

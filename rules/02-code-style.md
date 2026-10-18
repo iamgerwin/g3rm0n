@@ -19,9 +19,13 @@
 g3rm0n              entry point: argument parsing and dispatch only
 lib/core.sh         version, paths, colors, config parsing, formatting helpers
 lib/ui.sh           panel primitives: titles, bars, sparklines, padding, grid
-lib/system.sh       system samplers and system panels
-lib/ai.sh           AI providers, cache and AI panels
-lib/dashboard.sh    frame composition, live loop, one-shot output
+lib/panel.sh        panel registry, sample/render composition, hit-testing
+lib/fold.sh         fold state and its persistence
+lib/input.sh        terminal input adapter: keys and mouse -> events
+lib/keymap.sh       key bindings as data
+lib/system.sh       system samplers and system panel renderers
+lib/ai.sh           AI providers, cache and AI panel renderer
+lib/dashboard.sh    controller: panel registration, live loop, action dispatch
 lib/setup.sh        g3rm0n setup
 completions/        bash, zsh (_g3rm0n) and fish completions
 tests/              smoke tests, cross-shell tests, docs drift check and mocks
@@ -31,7 +35,8 @@ scripts/            maintainer tools (bump-version.sh); never installed
 rules/              these rules
 ```
 
-Put new code in the module that owns its concern. Don't create a new module for a
+[ARCHITECTURE.md](../ARCHITECTURE.md) explains how the modules work together and
+which pattern each follows. Put new code in the module that owns its concern. Don't create a new module for a
 single function.
 
 ## Naming
@@ -42,11 +47,17 @@ single function.
 | `ui_` | UI primitives | `ui_bar`, `ui_grid` |
 | `sys_` | system sampling and panels | `sys_sample`, `sys_panel_cpu` |
 | `ai_` | AI providers and panels | `ai_fetch_claude`, `ai_panel` |
-| `dash_` | dashboard loop | `dash_frame` |
+| `panel_` | panel registry and composition | `panel_register`, `panel_at` |
+| `fold_` | fold state | `fold_toggle`, `fold_save` |
+| `in_` | input adapter | `in_read`, `in_decode` |
+| `keymap_` | key bindings | `keymap_action` |
+| `dash_` | dashboard controller | `dash_sample`, `dash_do` |
 | `setup_` | setup command | `setup_write` |
 | `G3_*` | global constants | `G3_VERSION`, `G3_W` |
 | `S_*` | sampled system state | `S_CPU`, `S_MEM_P` |
-| `P_*` | panel arrays (one element per row) | `P_cpu`, `P_ai_zai` |
+| `PANEL_*` | panel registry and the renderer contract | `PANEL_BODY`, `PANEL_SUM`, `PANEL_IDS` |
+| `PB_*`, `PV_*` | per-panel body rows / composed view (made by `panel.sh`, never by hand) | `PB_cpu`, `PV_ai_zai` |
+| `KEYMAP*`, `FOLD`, `IN_EVENT` | key bindings, fold state, the current input event | |
 | `c_*` | color codes (empty when color is off) | `c_dim`, `c_off` |
 
 Locals are lowercase and always declared with `local`. Functions start with a
@@ -60,7 +71,13 @@ one-line comment that states inputs and outputs, e.g. `# pct [width] -> colored 
 - Never `eval`. Never `source` user-controlled files: the config is parsed, not sourced.
 - Prefer bash builtins over subshells inside the frame loop; every fork costs time at
   each refresh.
-- Keep functions short and single-purpose. A sampler samples, a panel formats.
+- Keep functions short and single-purpose. A sampler samples, a renderer formats, the
+  controller decides. Renderers never read input or fold state; the composer never
+  samples.
+- Keep I/O at the edges: decoding, layout and fold logic are pure functions over their
+  inputs, so `tests/ui.sh` can check them with plain strings.
+- Behavior that is really data (key bindings, sections, providers) lives in a table,
+  not in `if` chains.
 - Comments explain **why**, not what. Match the density of the surrounding code.
 - Write user-facing text in plain, short sentences with no jargon.
 - Format with 2-space indents and no tabs, and keep lines under ~110 columns.

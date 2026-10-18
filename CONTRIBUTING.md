@@ -15,6 +15,7 @@ read it before you start.
    shellcheck -x g3rm0n install.sh lib/*.sh completions/g3rm0n.bash tests/*.sh
    tests/smoke.sh
    tests/shells.sh   # bash, zsh, fish, dash, ksh, mksh, tcsh; missing shells are skipped
+   tests/ui.sh       # folding, keys and mouse, in a pseudo-terminal
    tests/docs.sh     # docs match the code
    ```
 

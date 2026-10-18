@@ -6,6 +6,41 @@ All notable changes to g3rm0n are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Folding panels.** Every panel folds, like an accordion, into a single title line
+  that keeps its key numbers, e.g. `▸ ◫ Memory · 44% · 13.9G/31.2G`. Open panels show
+  `▾`, folded ones `▸`.
+- **Click to fold.** Click a panel's title to fold or unfold it, per AI provider too.
+  This uses the standard xterm mouse protocol, so it works in the usual terminals on
+  Linux, macOS and Windows (Windows Terminal, iTerm2, Terminal.app, GNOME Terminal,
+  Konsole, kitty, Alacritty, WezTerm, VS Code, and tmux with `mouse on`).
+- **Keyboard shortcuts.** `1`–`8` fold or unfold a section (the digit is shown on
+  each title), `-` folds everything, `+` unfolds everything, `r` or space refreshes,
+  and `q` quits. `g3rm0n help` lists them.
+- Folds are remembered between runs (`~/.local/state/g3rm0n/folded`).
+- `-f`, `--fold LIST`: start with sections or panels folded (`all` and `none` work
+  too). With `--once`, it gives a compact snapshot.
+- `--no-mouse` and the config key `mouse = off` leave the mouse to the terminal, for
+  its own text selection.
+- `ARCHITECTURE.md`: the module map, the design patterns and the live loop.
+
+### Changed
+
+- The live dashboard redraws immediately after a key press, click or window resize,
+  without re-sampling the machine, so rates stay accurate. Frames render about
+  twice as fast.
+- Panels are built through a registry (`lib/panel.sh`), with input, key bindings and
+  fold state in their own modules (`lib/input.sh`, `lib/keymap.sh`, `lib/fold.sh`).
+- `g3rm0n setup` keeps config keys it doesn't manage (such as `mouse`) instead of
+  dropping them.
+- One-shot output (`--once`, or piped) is unchanged and ignores saved folds unless
+  `--fold` is given.
+- For contributors: a new suite, `tests/ui.sh`, unit-tests input decoding, the keymap,
+  fold state, titles and hit-testing, and drives the live dashboard with real keys
+  and mouse clicks in a pseudo-terminal. The docs check also covers key bindings,
+  config keys and `ARCHITECTURE.md`.
+
 ## [0.1.1] - 2026-10-18
 
 ### Added

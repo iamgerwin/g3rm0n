@@ -42,9 +42,12 @@ window has started.
 Print a few words telling the user how to fix a missing or rejected credential,
 such as `run codex login` or `check DEEPSEEK_API_KEY`.
 
-## 5. Wire up the panel arrays
+## 5. Nothing to wire up
 
-Declare `P_ai_<id>=()` alongside the others in `dash_run` (`lib/dashboard.sh`).
+`dash_register` registers every detected provider as a panel (`ai-<id>`) in its
+kind's section. Folding, clicking, `--fold ai-<id>` and the section shortcut work for
+it automatically, and the folded title shows the summary that `ai_panel` builds
+for its kind.
 
 ## 6. Test it
 

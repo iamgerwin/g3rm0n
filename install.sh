@@ -70,7 +70,7 @@ uninstall() {
     elif [[ -f $f ]] && grep -q "$MARK" "$f"; then rm -f "$f"; fi
   done
   if [[ -d $SHARE_DIR && ! -L $SHARE_DIR ]]; then rm -rf "$SHARE_DIR"; fi
-  say "g3rm0n removed. Config kept in ${XDG_CONFIG_HOME:-$HOME/.config}/g3rm0n"
+  say "g3rm0n removed. Config kept in ${XDG_CONFIG_HOME:-$HOME/.config}/g3rm0n, folds in ${XDG_STATE_HOME:-$HOME/.local/state}/g3rm0n"
 }
 
 version=""

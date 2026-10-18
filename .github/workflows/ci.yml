@@ -51,6 +51,8 @@ jobs:
         run: tests/smoke.sh
       - name: Cross-shell tests (bash, zsh, fish, dash, ksh, mksh, tcsh, busybox)
         run: tests/shells.sh
+      - name: Interaction tests (folding, keys, mouse in a pseudo-terminal)
+        run: tests/ui.sh
       - name: Installer (from checkout, clean HOME)
         run: |
           export HOME=$(mktemp -d)

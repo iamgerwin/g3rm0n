@@ -37,6 +37,8 @@ export HOME=${HOME:-/nonexistent}
 source lib/core.sh
 # shellcheck source=/dev/null
 source lib/ai.sh
+# shellcheck source=/dev/null
+source lib/keymap.sh
 help=$(NO_COLOR=1 ./g3rm0n help 2>&1)
 setup_help=$(NO_COLOR=1 ./g3rm0n setup --help 2>&1)
 mapfile -t opts < <(grep -o -- '--[a-z][a-z-]*' <<<"$help" | grep -vx -- '--help' | sort -u)
@@ -89,6 +91,20 @@ for id in "${G3_PROVIDERS[@]}"; do
   for var in ${AI_ENV[$id]:-}; do check "credential variable $var missing from README.md" in_file README.md "$var"; done
 done
 
+for k in "${KEYMAP_HELP[@]}"; do
+  check "key '${k%%|*}' (KEYMAP_HELP) missing from the README keys table" grep -qF -- "| \`${k%%|*}\`" README.md
+done
+g3_config_load
+for key in "${!CFG[@]}"; do
+  check "config key '$key' missing from the README configuration table" grep -qF -- "| \`$key\`" README.md
+done
+
+# ---- architecture: every module is documented ---------------------------------------
+for m in lib/*.sh; do
+  check "$m missing from ARCHITECTURE.md" in_file ARCHITECTURE.md "$m"
+  check "$m missing from the layout in rules/02-code-style.md" in_file rules/02-code-style.md "$m"
+done
+
 # ---- rules, tests, CI, agent instructions ---------------------------------------
 for r in rules/[0-9]*.md; do
   check "rules/README.md does not link ${r#rules/}" in_file rules/README.md "(${r#rules/})"
@@ -98,6 +114,7 @@ for t in tests/*.sh; do
   check "rules/06-testing.md does not mention $t" in_file rules/06-testing.md "$t"
 done
 check "AGENTS.md must point to rules/" in_file AGENTS.md "rules/"
+check "AGENTS.md must point to ARCHITECTURE.md" in_file AGENTS.md "ARCHITECTURE.md"
 check "CLAUDE.md must import AGENTS.md" in_file CLAUDE.md "@AGENTS.md"
 check "AGENTS.md must name the docs check" in_file AGENTS.md "tests/docs.sh"
 check ".githooks/pre-commit must run the docs check" in_file .githooks/pre-commit "tests/docs.sh"

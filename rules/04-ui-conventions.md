@@ -13,11 +13,32 @@ Load   0.61 · 0.71 · 0.61 · 2 threads
 
 - **Width:** every panel is `G3_W` = 46 columns, and two panels sit side by side with
   a 2-column gap. Below 94 columns, panels stack in one column.
-- **Title:** `ui_title <icon> <name>`. The icon is a single-width glyph.
+- **Title:** composed by `panel.sh` from the icon and name you register; renderers
+  never draw their own title. The icon is a single-width glyph. In the live dashboard
+  the title also carries the fold marker (`▾` open, `▸` folded) and the section's
+  shortcut digit at the right end.
 - **Rows:** start every row with `ui_label <Label>`, which pads the label to 7
   columns. Labels are one capitalized word of 6 characters or fewer.
 - **Height:** 3–5 rows per panel. Panels that share a row are padded to equal height automatically.
 - **One fact per row.** Put secondary detail after a dim `·`.
+
+## Folding
+
+Every panel folds to its title line. A folded title shows the panel's summary
+(`PANEL_SUM`) after a `·`:
+
+```
+▸ ◫ Memory · 44% · 13.9G/31.2G ───────────── 2
+```
+
+- The summary is the one or two numbers someone would unfold the panel to see: a
+  usage percent, a balance, a state such as `rate limited`.
+- Keep it to about 25 columns. One that doesn't fit is dropped, never cut, so plan for
+  the longest realistic value.
+- Color only the main number (`ui_tone` for percentages, `c_yellow` for states that
+  need attention). The rest stays plain.
+- One-shot output stays exactly as it was before folding: no markers and no digits
+  unless `--fold` asked for folds.
 
 ## Bars and numbers
 
