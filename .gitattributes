@@ -11,6 +11,7 @@
 /CLAUDE.md        export-ignore
 /CONTRIBUTING.md  export-ignore
 /ARCHITECTURE.md  export-ignore
+/learnings        export-ignore
 /.editorconfig    export-ignore
 /.shellcheckrc    export-ignore
 /.gitattributes   export-ignore

@@ -22,6 +22,14 @@ Load   0.61 · 0.71 · 0.61 · 2 threads
 - **Height:** 3–5 rows per panel. Panels that share a row are padded to equal height automatically.
 - **One fact per row.** Put secondary detail after a dim `·`.
 
+## Header
+
+The top line is a list of components (`lib/header.sh`), rendered in the order given by
+`header` in the config. A new component is one `hdr_<id>` function that sets `HDR_TEXT`
+from already-sampled data, plus its `HDR_FN` entry. Components never add their own
+separators, never run a process per frame (use `printf '%(…)T'` for time), and say in
+`HDR_DROP` whether they may give way in a narrow window.
+
 ## Folding
 
 Every panel folds to its title line. A folded title shows the panel's summary

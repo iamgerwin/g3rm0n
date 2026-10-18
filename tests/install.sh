@@ -43,7 +43,7 @@ expected=$( { printf '%s\n' g3rm0n LICENSE "lib/platform/$plat.sh" completions/g
 actual=$(cd "$share" && find . -type f | sed 's|^\./||' | sort)
 check "installs exactly the run-time files" test "$actual" = "$expected"
 check "only this OS's backend ($plat)"       test ! -e "$share/lib/platform/$other.sh"
-for d in tests rules scripts .github .githooks .claude; do
+for d in tests rules scripts learnings .github .githooks .claude; do
   check "no $d/ installed" test ! -e "$share/$d"
 done
 check "no dev docs installed" bash -c "! ls '$share'/{AGENTS,CLAUDE,CONTRIBUTING,ARCHITECTURE}.md 2>/dev/null"
@@ -69,7 +69,7 @@ if git -C "$root" rev-parse HEAD >/dev/null 2>&1; then
   for p in g3rm0n install.sh LICENSE README.md CHANGELOG.md lib/core.sh "lib/platform/linux.sh" "lib/platform/darwin.sh" completions/_g3rm0n; do
     check "tarball has $p" grep -qx -- "$p" <<<"$list"
   done
-  for p in tests/ rules/ scripts/ .github/ .githooks/ .claude/ AGENTS.md CLAUDE.md CONTRIBUTING.md ARCHITECTURE.md; do
+  for p in tests/ rules/ scripts/ learnings/ .github/ .githooks/ .claude/ AGENTS.md CLAUDE.md CONTRIBUTING.md ARCHITECTURE.md; do
     check "tarball leaves out $p" bash -c "! grep -q '^${p//./\\.}' <<<\"\$1\"" _ "$list"
   done
   mkdir -p "$tmp/tarball"

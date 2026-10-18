@@ -36,7 +36,8 @@ optional for small additions that change no existing behavior); otherwise patch.
 
 1. Make sure every change since the last release has its entry under `## [Unreleased]`.
 2. On the release branch, run `scripts/bump-version.sh patch|minor|major`. It cuts the
-   dated section, updates the version everywhere and runs the drift check.
+   dated section, updates the version everywhere (including the README sample screens,
+   via `scripts/readme-sample.sh --update`) and runs the drift check.
 3. Run the full [testing](06-testing.md) checklist.
 4. Commit with `chore(release): vX.Y.Z`, open the pull request and merge it once CI passes.
 5. On `main`, create an annotated tag: `git tag -a vX.Y.Z -m "g3rm0n vX.Y.Z"`, and push it.

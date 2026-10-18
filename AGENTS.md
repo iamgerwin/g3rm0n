@@ -1,7 +1,8 @@
 # Instructions for coding agents
 
-Before changing anything in this repository, read every file in [`rules/`](rules/README.md)
-and [ARCHITECTURE.md](ARCHITECTURE.md), and follow them. In particular:
+Before changing anything in this repository, read every file in [`rules/`](rules/README.md),
+[ARCHITECTURE.md](ARCHITECTURE.md) and [learnings/dump.md](learnings/dump.md) (the
+mistakes already made here, and the rule each one led to), and follow them. In particular:
 
 - g3rm0n is a **read-only monitor**. Never add anything that changes the system or
   an account ([scope](rules/01-scope.md)).
@@ -19,6 +20,13 @@ and [ARCHITECTURE.md](ARCHITECTURE.md), and follow them. In particular:
   this deterministically and runs from the pre-commit hook, the agent stop hook in
   `.claude/settings.json`, and CI ([documentation](rules/08-documentation.md)). If it
   reports drift, fix the docs; never weaken the check to make it pass.
+- **Learn from the past, and record it.** Don't repeat anything in
+  [learnings/dump.md](learnings/dump.md). When you fix a bug or catch a mistake (yours or
+  anyone's), add an entry there in the same change: what happened, the cause, the
+  lesson, and what enforces it.
+- Living documents, kept current in every change that affects them: `README.md`,
+  `CHANGELOG.md`, `ARCHITECTURE.md`, `AGENTS.md`/`CLAUDE.md`, `rules/` and
+  `learnings/dump.md`.
 - Never edit the version by hand: `scripts/bump-version.sh patch|minor|major`
   ([git & releases](rules/07-git-and-releases.md)).
 - These must pass before you hand back: `bash -n`, `shellcheck -x`, `tests/smoke.sh`,
@@ -32,9 +40,10 @@ and [ARCHITECTURE.md](ARCHITECTURE.md), and follow them. In particular:
 | Path | What it is |
 |------|------------|
 | `g3rm0n` | entry point (argument parsing and dispatch) |
-| `lib/` | `core` · `ui` · `panel` · `fold` · `input` · `keymap` · `system` · `ai` · `dashboard` · `setup` ([ARCHITECTURE.md](ARCHITECTURE.md)) |
+| `lib/` | `core` · `ui` · `panel` · `fold` · `input` · `keymap` · `header` · `system` · `ai` · `dashboard` · `setup` ([ARCHITECTURE.md](ARCHITECTURE.md)) |
 | `lib/platform/` | `linux.sh`, `darwin.sh`: one backend per OS, same contract |
 | `completions/` | bash, zsh, fish |
 | `tests/` | `smoke.sh`, `shells.sh`, `ui.sh`, `platform.sh`, `install.sh`, `docs.sh`; `lib/` helpers; `mock/` fixtures |
 | `scripts/bump-version.sh` | version bump and changelog cut |
 | `.githooks/pre-commit` | runs `tests/docs.sh --staged` |
+| `learnings/dump.md` | past mistakes and the rules they led to (living document) |

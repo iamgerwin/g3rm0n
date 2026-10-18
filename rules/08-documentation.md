@@ -1,5 +1,21 @@
 # 8. Documentation
 
+## Living documents
+
+These are part of every change that affects them, never a later clean-up:
+
+| Document | Keeps |
+|----------|-------|
+| `README.md` | what users see and do, including the sample screen and quick start |
+| `CHANGELOG.md` | every user-visible change, under `## [Unreleased]` |
+| `ARCHITECTURE.md` | modules, patterns, contracts |
+| `AGENTS.md` / `CLAUDE.md` | instructions for coding agents |
+| `rules/` | conventions |
+| `learnings/dump.md` | every mistake caught and the rule it led to |
+
+When you fix a bug or catch a mistake, add a `learnings/dump.md` entry in the same
+change (format at the top of that file). Never delete entries; supersede them.
+
 The docs are part of the product. A change isn't done until the docs that describe
 it are true again. Drift is caught by a deterministic check, not by memory.
 
@@ -56,6 +72,8 @@ true after a `lib/` change), it prints a `note` instead of failing. Read it.
 | Installer behavior | README **Install**/**Uninstall**, the header comment and `usage` in `install.sh`, CHANGELOG |
 | Shell-specific behavior | README **Shells**, `tests/shells.sh` |
 | A convention | the matching file in `rules/`, and `AGENTS.md` if agents must know it |
+| A bug fix, or a mistake caught in review | a `learnings/dump.md` entry |
+| Anything users see on screen | the README sample screen if it shows that part |
 | Tests or CI | [testing](06-testing.md) |
 
 ## Writing the changelog

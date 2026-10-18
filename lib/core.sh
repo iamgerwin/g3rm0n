@@ -8,6 +8,7 @@ G3_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/g3rm0n"
 G3_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/g3rm0n"
 
 G3_SECTIONS=(cpu memory disk power processes network ai-tokens ai-credits)
+G3_HEADER="logo health host os date time"   # header components, in order (lib/header.sh)
 G3_PROVIDERS=(claude codex zai deepseek openrouter)
 
 declare -gA G3_SECTION_LABEL=(
@@ -108,7 +109,7 @@ g3_expand() { # "~/x" -> "$HOME/x"
 declare -gA CFG=()
 
 g3_config_load() {
-  CFG=([sections]="${G3_SECTIONS[*]}" [interval]=2 [providers]=auto [mouse]=on)
+  CFG=([sections]="${G3_SECTIONS[*]}" [interval]=2 [providers]=auto [mouse]=on [header]="$G3_HEADER")
   [[ -r $G3_CONFIG_FILE ]] || return 0
   local line re='^[[:space:]]*([a-z][a-z0-9_.-]*)[[:space:]]*=[[:space:]]*(.*)$'
   while IFS= read -r line || [[ -n $line ]]; do

@@ -36,6 +36,7 @@ lib/panel.sh        panel registry, sample/render composition, hit-testing
 lib/fold.sh         fold state and its persistence
 lib/input.sh        terminal input adapter: keys and mouse -> events
 lib/keymap.sh       key bindings as data
+lib/header.sh       the header line, built from components
 lib/platform/linux.sh   Linux backend (the platform contract)
 lib/platform/darwin.sh  macOS backend (the platform contract)
 lib/system.sh       rates, health score and system panel renderers (all platforms)
@@ -45,10 +46,11 @@ lib/setup.sh        g3rm0n setup
 completions/        bash, zsh (_g3rm0n) and fish completions
 tests/              test suites; tests/lib/ shared portable helpers; tests/mock/ fake
                     curl and recorded macOS command output (tests/mock/darwin/)
-scripts/            maintainer tools (bump-version.sh); never installed
+scripts/            maintainer tools (bump-version.sh, readme-sample.sh); never installed
 .githooks/          git hooks (enable with: git config core.hooksPath .githooks)
 .claude/            coding-agent project settings and hooks
 rules/              these rules
+learnings/          dump.md: past mistakes and the rules they led to
 ```
 
 [ARCHITECTURE.md](../ARCHITECTURE.md) explains how the modules work together and
@@ -67,6 +69,7 @@ single function.
 | `fold_` | fold state | `fold_toggle`, `fold_save` |
 | `in_` | input adapter | `in_read`, `in_decode` |
 | `keymap_` | key bindings | `keymap_action` |
+| `hdr_` | header components | `hdr_render`, `hdr_time` |
 | `dash_` | dashboard controller | `dash_sample`, `dash_do` |
 | `setup_` | setup command | `setup_write` |
 | `G3_*` | global constants | `G3_VERSION`, `G3_W` |

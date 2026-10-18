@@ -6,6 +6,30 @@ All notable changes to g3rm0n are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **A clearer header.** It now shows the date and time in your time zone, instead of
+  the kernel version:
+  `g3rm0n  ● 96 Healthy  workstation · Ubuntu 24.04.1 LTS · Oct 08 | 12:34PM PST`.
+  The time updates with every refresh. In a narrow window the OS, host and date give
+  way first; the health score and time always stay.
+- The README starts with a 30-second, copy-and-paste quick start for Mac and Linux.
+  Its sample screens are now generated from g3rm0n's own drawing code, so they always
+  match what you'll see.
+
+### Added
+
+- The header is built from parts (`logo`, `health`, `host`, `os`, `kernel`, `date`,
+  `time`) that `header` in the config can reorder or trim, e.g.
+  `header = logo health time date`. The kernel version is one `header` entry away.
+- For contributors:
+  - `learnings/dump.md`, a living record of past mistakes and the rules they led to.
+    It's imported by `CLAUDE.md`, required reading in `AGENTS.md`, and checked for
+    format by `tests/docs.sh`.
+  - `scripts/readme-sample.sh` draws the README screens. `tests/docs.sh` fails when
+    they drift, and `scripts/bump-version.sh` refreshes them.
+  - `lib/header.sh` holds the header components.
+
 ## [0.1.6] - 2026-10-18
 
 ### Fixed
