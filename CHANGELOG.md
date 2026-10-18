@@ -35,6 +35,8 @@ All notable changes to g3rm0n are documented here. The format follows
   with an incomplete backend. Linux output is unchanged.
 - Claude reset times are parsed in `jq` instead of with GNU `date`, so they behave
   the same everywhere.
+- The header shows the short host name (`mac-mini`, not `mac-mini.local`) and
+  shortens very long ones, so the OS and kernel always stay visible.
 - For contributors: every test suite now runs on Ubuntu 22.04 and 24.04 and on macOS
   14 and 15, through shared portable helpers (`tests/lib/common.sh`). Two new suites
   join them. `tests/platform.sh` checks every backend against the contract and runs

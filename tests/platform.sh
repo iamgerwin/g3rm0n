@@ -44,6 +44,17 @@ sed -i.bak '/^plat_gpu()/,/^}/d' "$tmp/broken/lib/platform/$native.sh"
 out=$("$tmp/broken/g3rm0n" --once --no-ai 2>&1)
 check "contract: an incomplete backend is refused by name" contains "$out" "missing: plat_gpu"
 
+# ---- portable code: what breaks on one platform only, caught on every platform -------
+code=("$root/g3rm0n" "$root/install.sh" "$root"/lib/*.sh "$root"/lib/platform/*.sh "$root/completions/g3rm0n.bash")
+shared=("$root/g3rm0n" "$root/install.sh" "$root"/lib/*.sh "$root/completions/g3rm0n.bash")
+# macOS's libc counts UTF-8 lead bytes as identifier characters: "$c_dim·" breaks there
+out=$(LC_ALL=C grep -nE '\$[A-Za-z_][A-Za-z0-9_]*[^ -~[:space:]]' "${code[@]}")
+check "portable: no \$name directly followed by a non-ASCII character" test -z "$out"
+# GNU-only or BSD-only flags belong in a backend, never in shared code
+out=$(grep -nE '(date -d|date -j|stat -c|stat -f|readlink -f|sed -i|df -B|--output=|--sort=|nproc|/proc/|/sys/)' "${shared[@]}" \
+      | grep -vE '^\S+:[0-9]+:\s*#|/proc/\$PPID/comm' )
+check "portable: no OS-specific commands in shared code" test -z "$out"
+
 # ---- 2. the macOS backend on recorded macOS output ---------------------------------
 out=$(PATH="$root/tests/mock/darwin:$PATH" G3_PLATFORM=darwin "$root/g3rm0n" --once --no-ai 2>&1)
 check "darwin: OS name"                  contains "$out" "macOS 15.1"

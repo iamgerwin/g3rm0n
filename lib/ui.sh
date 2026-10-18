@@ -29,7 +29,8 @@ ui_label() { ui_pad "$1" 7; }   # left column of every panel row
 # A summary that doesn't fit is left out rather than cut, so colors never break.
 ui_title() {
   local head="${3:+$3 }$c_bold$1 $2$c_off" tail="${5:+ $c_dim${5:-}$c_off}" sum="" t used fill
-  [[ -n ${4:-} ]] && sum=" $c_dim·$c_off $4"
+  # braces matter: macOS reads the first byte of a UTF-8 character after $name as part of the name
+  [[ -n ${4:-} ]] && sum=" ${c_dim}·${c_off} $4"
   # visible widths, measured in-process (no subshells: this runs for every panel, every frame)
   t=${head//$'\e'\[*([0-9;])m/}; used=${#t}
   t=${tail//$'\e'\[*([0-9;])m/}; used=$(( used + ${#t} + 1 ))
