@@ -86,6 +86,10 @@ one-line comment that states inputs and outputs, e.g. `# pct [width] -> colored 
 - Keep functions short and single-purpose. A sampler samples, a renderer formats, the
   controller decides. Renderers never read input or fold state; the composer never
   samples.
+- Never signal "stop" with a return code that a failed lookup could also produce.
+  Use an explicit flag (`DASH_QUIT`) and let handlers return 0.
+- The last line of `g3rm0n` stays `main "$@"; exit`. Bash reads the file as it runs,
+  and anything after `main` would be read from a file an update may have replaced.
 - Keep I/O at the edges: decoding, layout and fold logic are pure functions over their
   inputs, so `tests/ui.sh` can check them with plain strings.
 - Behavior that is really data (key bindings, sections, providers) lives in a table,

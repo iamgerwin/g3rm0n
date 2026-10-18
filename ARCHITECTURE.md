@@ -54,7 +54,9 @@ with plain strings.
 
 **Command table (keys).** `KEYMAP` maps keys to named actions (`quit`, `refresh`,
 `section <name>`, `fold-all`, `unfold-all`, `panel <id>`). `dash_do` is the single
-dispatcher. A new shortcut is one table entry plus a `KEYMAP_HELP` line; the docs
+dispatcher. Quitting is an explicit flag (`DASH_QUIT`), never a return code, so an
+event that resolves to nothing (a click beside the titles, an empty section) can't
+end the dashboard; `dash_event` always returns 0. A new shortcut is one table entry plus a `KEYMAP_HELP` line; the docs
 check makes sure the README lists it. Unbound keys refresh, as they always have.
 
 **State as data.** Fold state is a map of panel ids, saved as one line of ids and
@@ -126,6 +128,11 @@ dash_run
      └─ wait for the next sample, in ≤250 ms slices (a resize can't interrupt read):
           in_read ─► IN_EVENT ─► dash_event ─► keymap_action / panel_at ─► dash_do
 ```
+
+The entry point ends with `main "$@"; exit` on one line. Bash reads a script while it
+runs it, so if `g3rm0n` is rewritten while running (an update, a `git pull` in a
+linked checkout), the running copy must never read past `main`. Modules are
+`source`d whole at start-up and aren't affected.
 
 Exit paths (`q`, Ctrl-C, `TERM`, any error) all run `dash_restore`, which turns mouse
 reporting off and leaves the alternate screen, so the terminal is always given back

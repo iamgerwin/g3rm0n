@@ -58,11 +58,13 @@ dash_draw() { # interval -> paints one frame on the alternate screen
   printf '\e[H%s\e[J' "$frame"
 }
 
-# dash_do <action> [arg] -> runs one action; returns 1 to quit. Sets DASH_RESAMPLE.
+# dash_do <action> [arg] -> runs one action. Sets DASH_QUIT or DASH_RESAMPLE.
+# Quitting is an explicit flag, never a return code: an action that finds nothing
+# to do (a click beside the titles, an empty section) must never end the dashboard.
 dash_do() {
   local -a ids=()
   case $1 in
-    quit) return 1 ;;
+    quit) DASH_QUIT=1 ;;
     refresh) DASH_RESAMPLE=1 ;;
     section) mapfile -t ids < <(panel_in_section "$2")
              (( ${#ids[@]} )) && fold_group_toggle "${ids[@]}" && fold_save ;;
@@ -73,16 +75,17 @@ dash_do() {
   return 0
 }
 
-dash_event() { # IN_EVENT -> action, then dash_do; returns 1 to quit
+dash_event() { # IN_EVENT -> action, then dash_do. Always returns 0; see DASH_QUIT.
   local kind a b id
   read -r kind a b <<<"$IN_EVENT"
   case $kind in
     key)   local action; action=$(keymap_action "$a")
            # shellcheck disable=SC2086  # "section cpu" -> two words on purpose
            dash_do $action ;;
-    click) id=$(panel_at "$a" "$b") && dash_do panel "$id" ;;
-    *)     return 0 ;;
+    click) # only a click on a title folds; anywhere else is ignored
+           if id=$(panel_at "$a" "$b"); then dash_do panel "$id"; fi ;;
   esac
+  return 0
 }
 
 dash_restore() { (( ${G3_MOUSE:-0} )) && in_mouse_off; printf '\e[?1049l\e[?25h\e[0m'; plat_cleanup; }
@@ -123,7 +126,7 @@ dash_run() { # once interval [fold-list]
   (( G3_MOUSE )) && in_mouse_on
   sleep 0.5   # give the first frame a meaningful sample window
 
-  local next now wait last_cols=0 DASH_RESAMPLE=1
+  local next now wait last_cols=0 DASH_RESAMPLE=1 DASH_QUIT=0
   while :; do
     if (( DASH_RESAMPLE )); then
       dash_sample
@@ -146,7 +149,8 @@ dash_run() { # once interval [fold-list]
       in_read "$key"
       if (( resized )); then resized=0; break; fi
       [[ $IN_EVENT == none ]] && continue
-      dash_event || { dash_restore; trap - INT TERM EXIT WINCH; return 0; }
+      dash_event
+      (( DASH_QUIT )) && { dash_restore; trap - INT TERM EXIT WINCH; return 0; }
       break
     done
   done
