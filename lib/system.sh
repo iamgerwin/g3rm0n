@@ -22,6 +22,8 @@ sys_static() {
   local missing; missing=$(sys_contract_missing)
   [[ -z $missing ]] || die "the $G3_PLATFORM backend is incomplete, missing: ${missing//$'\n'/ }"
   S_HOST=${HOSTNAME:-$(uname -n)}
+  S_HOST=${S_HOST%%.*}                                  # "mac-mini.local" -> "mac-mini"
+  (( ${#S_HOST} > 24 )) && S_HOST="${S_HOST:0:23}…"     # keep room for the OS and kernel
   S_KERNEL=$(uname -r)
   plat_static
   S_RXH=() S_TXH=()
